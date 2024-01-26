@@ -41,5 +41,31 @@ inline _Up *safe_cast(_Tp *__val) noexcept {
     return static_cast <_Up *> (__val);
 }
 
+namespace detail {
+
+template <typename _Tp>
+concept __value_hidable = (sizeof(_Tp) <= sizeof(void *)) && std::is_trivial_v <_Tp>;
+
+} // namespace detail
+
+
+/* A wrapper that is using to help hide implement. */
+struct hidden_impl {
+  private:
+    void *impl {};
+  public:
+    /* Set the hidden implement pointer. */
+    void set_impl_ptr(void *__impl) noexcept { impl = __impl; }
+    /* Set the hidden implement value. */
+    template <class T> requires detail::__value_hidable <T>
+    void set_impl_val(T __val) noexcept { get_impl_val <T> () = __val; }
+
+    /* Get the hidden implement pointer. */
+    template <class T = void>
+    T *get_impl_ptr() const noexcept { return static_cast <T *> (impl); }
+    /* Get the hidden implement value. */
+    template <class T> requires detail::__value_hidable <T>
+    T &get_impl_val() noexcept { return *(reinterpret_cast <T *> (&impl)); }
+};
 
 } // namespace dark

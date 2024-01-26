@@ -8,6 +8,8 @@ include_directories(/usr/include/antlr4-runtime/)
 include_directories(include)
 include_directories(include/AST)
 include_directories(include/IR)
+include_directories(src/generated)
+
 
 file(GLOB_RECURSE sources src/*.cpp)
 add_executable(mxc ${sources})
