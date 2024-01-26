@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+# Generate the antlr4 parser
+# TODO
+
+bash build.bash
+
+# Compile program
+cmake -B bin
+cmake --build bin
+
+clang -emit-llvm -fno-builtin-printf -fno-builtin-memcpy -fno-builtin-malloc -fno-builtin-strlen -O3 --target=riscv32 lib/builtin.c -S -o bin/builtin.ll
+llc --march=riscv32 -O3 -mattr=+m,+a bin/builtin.ll -opaque-pointers -o bin/builtin.s
