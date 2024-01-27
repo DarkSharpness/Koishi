@@ -100,12 +100,8 @@ std::any ASTbuilder::visitBranch_Stmt(MxParser::Branch_StmtContext *ctx) {
     }
 
     /* May contain else statment. */
-    if (auto *__p = ctx->else_Stmt()) {
-        __branch->branches.push_back(branch_t {
-            .cond = nullptr,
-            .body = get_node <statement> (__p->stmt()),
-        });
-    }
+    if (auto *__p = ctx->else_Stmt())
+        __branch->else_body = get_node <statement> (__p->stmt());
 
     return set_node(__branch);
 }
@@ -248,7 +244,7 @@ std::any ASTbuilder::visitConstruct(MxParser::ConstructContext *__tmp) {
 
 std::any ASTbuilder::visitUnary(MxParser::UnaryContext *ctx) {
     auto *__unary = pool.allocate <unary_expr> ();
-    if (ctx->l) { // Prefix ++ will be denoted as +++
+    if (ctx->l) {   // Suffix "++" will be denoted as "+++"
         __unary->op   = ctx->op->getText();
         __unary->expr = get_node <expression> (ctx->l);
         __unary->op.str[2] = __unary->op.str[0]; 
@@ -277,7 +273,6 @@ std::any ASTbuilder::visitLiteral(MxParser::LiteralContext *ctx) {
 
     return set_node(__literal);
 }
-
 
 std::any ASTbuilder::visitTypename(MxParser::TypenameContext *ctx) {
     std::string __str = ctx->Identifier() ?

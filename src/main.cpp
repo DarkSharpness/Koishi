@@ -26,10 +26,15 @@ std::unique_ptr <dark::AST::ASTbuilder> parse_input() {
     return std::make_unique <dark::AST::ASTbuilder> (parser->file_Input());
 }
 
+void compiler_work() {
+    auto Wankupi = parse_input();
+    Wankupi->debug();
+}
+
 
 signed main(int argc, char** argv) {
     try {
-        auto Wankupi = parse_input();
+        compiler_work();
     } catch(const std::exception& e) {
         /* If non-dark-error, speak out what. */
         if (!dynamic_cast <const dark::error *> (&e))

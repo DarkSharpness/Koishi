@@ -22,7 +22,7 @@ struct function_expr final : expression {
 
 /* A unary expression. */
 struct unary_expr final : expression {
-    operand_t   op;     // Prefix ++ will be denoted as "+++"
+    operand_t   op;     // Suffix "++" will be denoted as "+++"
     expression *expr;
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visit(this); }
@@ -165,9 +165,10 @@ struct variable_def final : definition, statement {
 
 struct function_def final : definition, identifier {
     argument_list args;     // Arguments of the function.
-    statement    *body;     // Body of the function. If null, it's built-in.
+    statement    *body {};  // Body of the function. If null, it's built-in.
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visit(this); }
+    bool is_builtin() const noexcept { return body == nullptr; }
 };
 
 struct class_def final : definition {

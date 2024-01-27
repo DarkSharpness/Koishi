@@ -13,7 +13,6 @@ struct class_type;
 struct function_def;
 
 
-
 struct node {
     scope *ptr {}; // pointer to scope
     virtual void print() const = 0;
@@ -37,6 +36,9 @@ struct typeinfo {
     class_type *  base  {}; // Type of expression.
     int     dimensions  {}; // Dimensions of array.
     bool    assignable  {}; // Whether left value.
+
+    /* Return the name of the typeinfo. */
+    std::string data() const noexcept;
 };
 
 /* Function argument type. */

@@ -34,6 +34,10 @@ struct ASTbuilder final : public MxParserVisitor {
 
     ASTbuilder(MxParser::File_InputContext *ctx) { visitFile_Input(ctx); }
 
+    void debug() const noexcept {
+        for (auto &i : global) { i->print(); std::cerr << '\n'; }
+    }
+
   public:   // Override part
     std::any visitFile_Input(MxParser::File_InputContext *) override;
     std::any visitFunction_Definition(MxParser::Function_DefinitionContext *) override;
