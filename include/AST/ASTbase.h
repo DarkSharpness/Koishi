@@ -10,8 +10,27 @@ struct node;
 struct scope;
 struct class_type;
 
-struct function_def;
+struct subscript_expr;
+struct function_expr;
+struct unary_expr;
+struct binary_expr;
+struct ternary_expr;
+struct member_expr;
+struct construct_expr;
+struct atomic_expr;
+struct literal_expr;
 
+struct for_stmt;
+struct while_stmt;
+struct return_stmt;
+struct flow_stmt;
+struct block_stmt;
+struct branch_stmt;
+struct simple_stmt;
+
+struct variable_def;
+struct function_def;
+struct class_def;
 
 struct node {
     scope *ptr {}; // pointer to scope
@@ -19,10 +38,36 @@ struct node {
     virtual void accept(ASTbase *) = 0;
     virtual ~node() = default;
 };
+/* Visitor base class. */
 struct ASTbase {
     void visit(node *__n) { __n->accept(this); }
     virtual ~ASTbase() = default;
+
+    virtual void visitSubscript(subscript_expr *) = 0;
+    virtual void visitFunction(function_expr *) = 0;
+    virtual void visitUnary(unary_expr *) = 0;
+    virtual void visitBinary(binary_expr *) = 0;
+    virtual void visitTernary(ternary_expr *) = 0;
+    virtual void visitMember(member_expr *) = 0;
+    virtual void visitConstruct(construct_expr *) = 0;
+    virtual void visitAtomic(atomic_expr *) = 0;
+    virtual void visitLiteral(literal_expr *) = 0;
+
+    virtual void visitFor(for_stmt *) = 0;
+    virtual void visitWhile(while_stmt *) = 0;
+    virtual void visitReturn(return_stmt *) = 0;
+    virtual void visitFlow(flow_stmt *) = 0;
+    virtual void visitBlock(block_stmt *) = 0;
+    virtual void visitBranch(branch_stmt *) = 0;
+    virtual void visitSimple(simple_stmt *) = 0;    
+
+    virtual void visitVariableDef(variable_def *) = 0;
+    virtual void visitFunctionDef(function_def *) = 0;
+    virtual void visitClassDef(class_def *) = 0;
 };
+
+struct ASTbuilder;
+struct ASTchecker;
 
 
 } // namespace dark::AST
