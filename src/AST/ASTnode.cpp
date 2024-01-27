@@ -65,6 +65,7 @@ void subscript_expr::print() const {
 
 void function_expr::print() const {
     func->print();
+    std::cerr << "(";
     bool __first = true;
     for (auto __p : args) {
         if (__first) __first = false;
