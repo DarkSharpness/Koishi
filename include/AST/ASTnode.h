@@ -4,13 +4,6 @@
 /* Node part */
 namespace dark::AST {
 
-/* Bracket. */
-struct bracket_expr final : expression {
-    expression *expr;
-    void print() const override;
-    void accept(ASTbase *visitor) override { visitor->visit(this); }
-};
-
 /* Array access */
 struct subscript_expr final : expression {
     expression *expr;
@@ -21,15 +14,15 @@ struct subscript_expr final : expression {
 
 /* Function calls. */
 struct function_expr final : expression {
-    expression *expr;
-    expression_list arguments;
+    expression *    func;
+    expression_list args;
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visit(this); }
 };
 
 /* A unary expression. */
 struct unary_expr final : expression {
-    operand_t   op;     // Suffix ++ will be denoted as "+++"
+    operand_t   op;     // Prefix ++ will be denoted as "+++"
     expression *expr;
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visit(this); }
@@ -47,15 +40,16 @@ struct binary_expr final : expression {
 /* A ternary expression. */
 struct ternary_expr final : expression {
     expression *cond;
-    expression *expr[2]; // 0 : false, 1 : true
+    expression *lval;   // Left expression, if cond is true.
+    expression *rval;   // Right expression, if cond is false.
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visit(this); }
 };
 
 /* Member access. */
 struct member_expr final : expression {
-    expression *expr;
-    std::string member;
+    expression *expr;   // Expression to access.
+    std::string name;   // Name of the member.
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visit(this); }
 };
@@ -136,12 +130,12 @@ struct block_stmt final : statement {
 
 /* Branch statement, which may contain if and elses. */
 struct branch_stmt final : statement {
-    struct branch {
+    struct branch_t {
         expression *cond {};    // Should never be null.
         statement  *body {};    // Should never be null, even if empty.
     };
 
-    std::vector <branch> branches;
+    std::vector <branch_t> branches;
     statement *else_body {};    // May be null, when there is no else.
 
     void print() const override;
@@ -185,4 +179,3 @@ struct class_def final : definition {
 
 
 } // namespace dark::AST
-

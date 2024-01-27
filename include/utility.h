@@ -28,18 +28,22 @@ inline void runtime_assert(bool __cond, std::string_view __msg) {
     throw error(std::string(__msg));
 }
 
-/* Cast to derived may throw! */
-template <typename _Up, typename _Tp>
-requires std::is_base_of_v <_Tp, _Up>
-inline _Up *safe_cast(_Tp *__val) {
-    return &dynamic_cast <_Up &> (*__val);
-}
 /* Cast to base is safe. */
 template <typename _Up, typename _Tp>
-requires std::is_base_of_v <_Up, _Tp>
-inline _Up *safe_cast(_Tp *__val) noexcept {
-    return static_cast <_Up *> (__val);
+requires std::is_base_of_v <std::remove_pointer_t<_Up>, _Tp>
+inline _Up safe_cast(_Tp *__ptr) noexcept {
+    return static_cast <_Up> (__ptr);
 }
+
+/* Cast to derived may throw! */
+template <typename _Up, typename _Tp>
+requires (!std::is_base_of_v <std::remove_pointer_t<_Up>, _Tp>)
+inline _Up safe_cast(_Tp *__ptr) {
+    auto __tmp = dynamic_cast <_Up> (__ptr);
+    runtime_assert(__tmp, "Cast failed.");
+    return __tmp;
+}
+
 
 namespace detail {
 

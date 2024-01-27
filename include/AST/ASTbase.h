@@ -34,7 +34,7 @@ namespace dark::AST {
 
 /* Type information. */
 struct typeinfo {
-    class_type * type   {}; // Type of expression.
+    class_type *  base  {}; // Type of expression.
     int     dimensions  {}; // Dimensions of array.
     bool    assignable  {}; // Whether left value.
 };
@@ -55,8 +55,8 @@ struct statement  : virtual node {};
 
 /* Information of a class type. */
 struct class_type {
-    std::string name;       // Name of a function.
-    void *      impl {};    // Implmentation pointer.
+    const std::string name;   // Name of a function.
+    void *impl {};    // Implmentation pointer.
     class_type(std::string __str) noexcept : name(std::move(__str)) {}
 };
 
@@ -79,10 +79,23 @@ struct class_equal {
 struct operand_t {
     char str[8] {};
 
+    operand_t() = default;
+
+    void operator = (std::string  &&  __str) noexcept { return operator = (__str); }
+    void operator = (std::string_view __str) noexcept {
+        runtime_assert(__str.size() < 8, "operand string too long");
+        for (size_t i = 0; i < __str.size(); ++i) str[i] = __str[i];
+    }
+
     template <size_t _N> requires (_N < 8)
     friend bool operator ==
         (const operand_t &__lhs, const char (&__rhs)[_N])
-    noexcept {  return std::strncmp(__lhs.str, __rhs, _N) == 0;   }
+    noexcept {
+        for (size_t i = 0; i < _N; ++i)
+            if (__lhs.str[i] != __rhs[i])
+                return false;
+        return true;
+    }
 };
 
 /* Pair of variable definition. */
@@ -94,7 +107,7 @@ struct variable_pair {
 
 using definition_list = std::vector <definition *>;
 using expression_list = std::vector <expression *>;
-using   argument_list = std::vector <argument *>;
+using   argument_list = std::vector <argument>;
 using   variable_list = std::vector <variable_pair>;
 
 
@@ -108,5 +121,26 @@ struct identifier : argument {
 using function = function_def;
 /* A simple variable as identifier. */
 struct variable : identifier {};
+
+} // namespace dark::AST
+
+
+/* Node allocator. */
+namespace dark::AST {
+
+struct node_allocator {
+  private:
+    std::vector <node *> data;
+  public:
+    template <typename _Tp, typename ..._Args>
+    requires std::is_base_of_v <node, _Tp>
+    _Tp *allocate(_Args &&...args) {
+        _Tp *ptr = new _Tp(std::forward <_Args>(args)...);
+        data.push_back(ptr);
+        return ptr;
+    }
+    ~node_allocator();
+};
+
 
 } // namespace dark::AST

@@ -1,15 +1,36 @@
 #pragma once
 #include "ASTnode.h"
 #include "MxParserVisitor.h"
-#include <unordered_map>
+#include <unordered_set>
 
 namespace dark::AST {
 
 struct ASTbuilder final : public MxParserVisitor {
+  private:
+    node_allocator pool;
+
+    /* Set the return value to node. */
+    static node *set_node(node *__n) noexcept { return __n; }
+    /* Get the return value from ctx pointer. */
+    template <typename _Tp, typename _Ctx>
+    _Tp get_value(_Ctx *__p) { return std::any_cast <_Tp> (visit(__p)); }
+    /* Get the node pointer from ctx pointer. */
+    template <typename _Tp, typename _Ctx>
+    _Tp *get_node(_Ctx *__p) { return safe_cast <_Tp *> (get_value <node *> (__p)); }
+
+    class_type *get_class(std::string __str) {
+        return const_cast <class_type *> (
+            &*classes.emplace(std::move(__str)).first
+        );
+    }
+
   public:
+    using class_list = std::unordered_set <class_type, class_hash, class_equal>;
+
     /* Global definitions (Class/Variable/Function). */
     definition_list global;
-
+    /* Global class list. */
+    class_list      classes;
 
     ASTbuilder(MxParser::File_InputContext *ctx) { visitFile_Input(ctx); }
 
