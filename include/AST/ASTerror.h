@@ -1,5 +1,4 @@
 #pragma once
-
 #include "MxLexer.h"
 #include "MxParser.h"
 
