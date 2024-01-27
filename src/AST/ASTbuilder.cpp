@@ -1,7 +1,25 @@
+#include "ASTnode.h"
 #include "ASTbuilder.h"
 #include <ranges>
 
 namespace dark::AST {
+
+inline std::string Mx_string_parse(std::string &__src) {
+    std::string __dst;
+    if(__src.front() != '\"' || __src.back() != '\"')
+        throw error("Invalid string literal.");
+    __src.pop_back();
+    for(size_t i = 1 ; i < __src.length() ; ++i) {
+        if(__src[i] == '\\') {
+            switch(__src[++i]) {
+                case 'n':  __dst.push_back('\n'); break;
+                case '\"': __dst.push_back('\"'); break;
+                case '\\': __dst.push_back('\\'); break;
+                default: throw error("Invalid escape sequence.");
+            }
+        } else __dst.push_back(__src[i]);
+    } return __dst;
+}
 
 std::any ASTbuilder::visitFile_Input(MxParser::File_InputContext *ctx) {
     for (auto __p : ctx->children) {
@@ -267,10 +285,10 @@ std::any ASTbuilder::visitLiteral(MxParser::LiteralContext *ctx) {
     __literal->name = ctx->getText();
 
     if      (__ptr->Number())   __literal->type = literal_expr::NUMBER;
-    else if (__ptr->Cstring())  __literal->type = literal_expr::STRING;
     else if (__ptr->Null())     __literal->type = literal_expr::_NULL_;
+    else if (__ptr->Cstring())  __literal->type = literal_expr::STRING,
+                                __literal->name = Mx_string_parse(__literal->name);
     else                        __literal->type = literal_expr::_BOOL_;
-
     return set_node(__literal);
 }
 
