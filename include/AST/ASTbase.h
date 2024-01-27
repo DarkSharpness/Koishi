@@ -100,10 +100,14 @@ struct expression : virtual node { typeinfo type; };
 struct statement  : virtual node {};
 
 
-/* Information of a class type. */
+/* Information of a class type/function type. */
 struct class_type {
-    const std::string name;   // Name of a function.
-    void *impl {};    // Implmentation pointer.
+    const std::string name;   // Name of a function/class
+    union {
+        void *  impl{}; // Pointer of implementation.
+        scope * field;  // Member field of a class.
+        function_def *  func;   // Function to call.
+    };
     class_type(std::string __str) noexcept : name(std::move(__str)) {}
 };
 

@@ -33,7 +33,7 @@ struct scope {
      * @param __ptr Pointer of the identifier.
      * @return Whether the insertion was successful.
      */
-    bool insert(identifier *__ptr) const {
+    bool insert(identifier *__ptr) {
         return map.try_emplace(__ptr->name, __ptr).second;
     }
 };
