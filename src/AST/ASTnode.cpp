@@ -17,6 +17,10 @@ void print_indent() {
  */
 void print_field(const statement *stmt) {
     if (auto __blk = dynamic_cast <const block_stmt *> (stmt)) {
+        if (__blk->stmt.empty()) {
+            std::cerr << "{}\n";
+            return;
+        }
         std::cerr << "{\n"; 
 
         ++global_indent;
@@ -165,6 +169,11 @@ void flow_stmt::print() const {
 }
 
 void block_stmt::print() const {
+    if (stmt.empty()) {
+        std::cerr << "{}";
+        return;
+    }
+
     print_indent();
     std::cerr << "{\n";
 
