@@ -1,7 +1,8 @@
 #pragma once
-#include <iostream>
 #include <string>
 #include <format>
+#include <vector>
+#include <iostream>
 #include <concepts>
 
 namespace dark {
@@ -23,9 +24,10 @@ struct warning : std::exception {
 };
 
 /* Check in runtime. If fails, throw. */
-inline void runtime_assert(bool __cond, std::string_view __msg) {
+template <typename ..._Args>
+inline void runtime_assert(bool __cond, _Args &&...__args) {
     if (__builtin_expect(__cond, true)) return;
-    throw error(std::string(__msg));
+    throw error((std::string(std::forward <_Args>(__args)) + ...));
 }
 
 /* Cast to base is safe. */
@@ -70,6 +72,24 @@ struct hidden_impl {
     /* Get the hidden implement value. */
     template <class T> requires detail::__value_hidable <T>
     T &get_impl_val() noexcept { return *(reinterpret_cast <T *> (&impl)); }
+};
+
+
+/* A central allocator that is intented to avoid memleak. */
+template <typename _Vp>
+struct central_allocator {
+ private:
+    std::vector <_Vp *> data;
+  public:
+    /* Allocate one node. */
+    template <typename _Tp = _Vp, typename ..._Args>
+    requires std::is_base_of_v <_Vp, _Tp>
+    _Tp *allocate(_Args &&...args) {
+        auto *__ptr = new _Tp(std::forward <_Args>(args)...);
+        return data.push_back(__ptr), __ptr;
+    }
+
+    ~central_allocator() { for (auto *__ptr : data) delete __ptr; }
 };
 
 } // namespace dark

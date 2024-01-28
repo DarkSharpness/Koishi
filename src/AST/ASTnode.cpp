@@ -40,9 +40,7 @@ void print_field(const statement *stmt) {
     }
 }
 
-node_allocator::~node_allocator() {
-    for (auto *node : data) delete node;
-}
+
 
 std::string typeinfo::data() const noexcept {
     std::string __str = base->name;

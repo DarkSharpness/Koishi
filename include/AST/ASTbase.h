@@ -1,6 +1,6 @@
 #pragma once
 #include "utility.h"
-#include <vector>
+#include <unordered_set>
 
 /* ASTbase and node forward declaration. */
 namespace dark::AST {
@@ -33,7 +33,7 @@ struct function_def;
 struct class_def;
 
 struct node {
-    scope *ptr {}; // pointer to scope
+    scope *field {}; // pointer to scope
     virtual void print() const = 0;
     virtual void accept(ASTbase *) = 0;
     virtual ~node() = default;
@@ -156,12 +156,6 @@ struct variable_pair {
 };
 
 
-using definition_list = std::vector <definition *>;
-using expression_list = std::vector <expression *>;
-using   argument_list = std::vector <argument>;
-using   variable_list = std::vector <variable_pair>;
-
-
 /* An identifier can be a function/variable */
 struct identifier : argument {
     std::string unique_name;
@@ -173,24 +167,17 @@ using function = function_def;
 /* A simple variable as identifier. */
 struct variable : identifier {};
 
-} // namespace dark::AST
-
-
-/* Node allocator. */
-namespace dark::AST {
-
-struct node_allocator {
-  private:
-    std::vector <node *> data;
-  public:
-    template <typename _Tp, typename ..._Args>
-    requires std::is_base_of_v <node, _Tp>
-    _Tp *allocate(_Args &&...args) {
-        _Tp *ptr = new _Tp(std::forward <_Args>(args)...);
-        data.push_back(ptr);
-        return ptr;
+using definition_list = std::vector <definition *>;
+using expression_list = std::vector <expression *>;
+using   argument_list = std::vector <argument>;
+using   variable_list = std::vector <variable_pair>;
+struct class_list : std::unordered_set <class_type, class_hash, class_equal> {
+    template <typename ..._Args>
+    class_type &operator [] (_Args &&...__args) {
+        return const_cast <class_type &> (*this->emplace(
+            std::forward <_Args> (__args)...
+        ).first);
     }
-    ~node_allocator();
 };
 
 
