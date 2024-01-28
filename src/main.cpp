@@ -4,6 +4,7 @@
 #include "ASTerror.h"
 
 #include "ASTbuilder.h"
+#include "ASTchecker.h"
 
 #include <memory>
 
@@ -26,9 +27,16 @@ std::unique_ptr <dark::AST::ASTbuilder> parse_input() {
     return std::make_unique <dark::AST::ASTbuilder> (parser->file_Input());
 }
 
+std::unique_ptr <dark::AST::ASTchecker> check_input(dark::AST::ASTbuilder *ptr) {
+    return std::make_unique <dark::AST::ASTchecker> (ptr);
+}
+
 void compiler_work() {
-    auto Wankupi = parse_input();
-    Wankupi->debug();
+    auto Wankupi    = parse_input();
+    auto Hastin     = check_input(Wankupi.get());
+
+    Hastin.reset();
+    Wankupi.reset();
 }
 
 

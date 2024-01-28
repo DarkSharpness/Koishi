@@ -165,7 +165,16 @@ struct identifier : argument {
 /* We use function_def to represent a function identifier. */
 using function = function_def;
 /* A simple variable as identifier. */
-struct variable : identifier {};
+struct variable : node, identifier {
+    void print() const override {
+        runtime_assert(false, "variable::print() should not be called");
+        __builtin_unreachable();
+    }
+    void accept(ASTbase *) override {
+        runtime_assert(false, "variable::accept() should not be called");
+        __builtin_unreachable();
+    }
+};
 
 using definition_list = std::vector <definition *>;
 using expression_list = std::vector <expression *>;
