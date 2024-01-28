@@ -1,3 +1,4 @@
+#pragma once
 #include "ASTbase.h"
 #include <string>
 #include <unordered_map>
