@@ -20,6 +20,8 @@ struct scope {
     scope *prev {}; // Previous scope
     _Map_t  map {}; // Map of identifiers
 
+    scope(scope *__prev = nullptr) : prev(__prev) {}
+
     /**
      * @brief Tries to find the name in the scope.
      * @param __name Name to locate.

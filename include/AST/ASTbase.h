@@ -22,7 +22,6 @@ struct literal_expr;
 
 struct for_stmt;
 struct while_stmt;
-struct return_stmt;
 struct flow_stmt;
 struct block_stmt;
 struct branch_stmt;
@@ -55,7 +54,6 @@ struct ASTbase {
 
     virtual void visitFor(for_stmt *) = 0;
     virtual void visitWhile(while_stmt *) = 0;
-    virtual void visitReturn(return_stmt *) = 0;
     virtual void visitFlow(flow_stmt *) = 0;
     virtual void visitBlock(block_stmt *) = 0;
     virtual void visitBranch(branch_stmt *) = 0;
@@ -76,39 +74,15 @@ struct ASTchecker;
 /* Some basic types. */
 namespace dark::AST {
 
-/* Type information. */
-struct typeinfo {
-    class_type *  base  {}; // Type of expression.
-    int     dimensions  {}; // Dimensions of array.
-    bool    assignable  {}; // Whether left value.
-
-    /* Return the name of the typeinfo. */
-    std::string data() const noexcept;
-};
-
-/* Function argument type. */
-struct argument {
-    typeinfo    type;   // Type of argument.
-    std::string name;   // Name of argument.
-};
-
-/* Variable/function/class definition. */
-struct definition : virtual node {};
-/* Expression type. */
-struct expression : virtual node { typeinfo type; };
-/* Statement type. */
-struct statement  : virtual node {};
-
-
 /* Information of a class type/function type. */
 struct class_type {
     const std::string name;   // Name of a function/class
     union {
-        void *  impl{}; // Pointer of implementation.
-        scope * field;  // Member field of a class.
+        scope * field {};       // Member field of a class.
         function_def *  func;   // Function to call.
     };
     class_type(std::string __str) noexcept : name(std::move(__str)) {}
+    class_type(function_def *__func) noexcept : func(__func) {}
 };
 
 /* Hash function for class */
@@ -124,6 +98,32 @@ struct class_equal {
         return __lhs.name == __rhs.name;
     }
 };
+
+/* Type information. */
+struct typeinfo {
+    class_type *  base  {}; // Type of expression.
+    int     dimensions  {}; // Dimensions of array.
+    bool    assignable  {}; // Whether left value.
+
+    /* Return the name of the typeinfo. */
+    std::string data() const noexcept;
+
+    friend bool operator ==
+        (const typeinfo &__lhs, const typeinfo &__rhs) noexcept {
+        return __lhs.base == __rhs.base && __lhs.dimensions == __rhs.dimensions;
+    }
+
+    bool is_function() const noexcept { return base && base->name.empty(); }
+};
+
+/* Variable/function/class definition. */
+struct definition : virtual node {};
+/* Expression type. */
+struct expression : virtual node { typeinfo type; };
+/* Statement type. */
+struct statement  : virtual node {};
+/* A loop tagging. */
+struct loop_type { virtual ~loop_type() = default; };
 
 
 /* Operand string type. */
@@ -155,6 +155,11 @@ struct variable_pair {
     expression *expr {};    // Initial value.
 };
 
+/* Function argument type. */
+struct argument {
+    typeinfo    type;   // Type of argument.
+    std::string name;   // Name of argument.
+};
 
 /* An identifier can be a function/variable */
 struct identifier : argument {
@@ -162,8 +167,7 @@ struct identifier : argument {
     virtual ~identifier() = default;
 };
 
-/* We use function_def to represent a function identifier. */
-using function = function_def;
+
 /* A simple variable as identifier. */
 struct variable : node, identifier {
     void print() const override {
@@ -175,6 +179,8 @@ struct variable : node, identifier {
         __builtin_unreachable();
     }
 };
+/* We use function_def to represent a function identifier. */
+using function = function_def;
 
 using definition_list = std::vector <definition *>;
 using expression_list = std::vector <expression *>;

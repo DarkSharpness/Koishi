@@ -56,7 +56,6 @@ struct member_expr final : expression {
 
 /* Operator new expression. (May contains array) */
 struct construct_expr final : expression {
-    typeinfo type;
     expression_list subscript;
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visitConstruct(this); }
@@ -65,6 +64,7 @@ struct construct_expr final : expression {
 /* Atomic expression (identifier). */
 struct atomic_expr final : expression {
     std::string name;
+    identifier *real {};    // Pointer to the identifier.
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visitAtomic(this); }
 };
@@ -76,7 +76,7 @@ struct literal_expr final : expression {
         STRING,
         _NULL_,
         _BOOL_,
-    } type;
+    } sort; // Type of the literal.
     std::string name;
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visitLiteral(this); }
@@ -89,7 +89,7 @@ struct literal_expr final : expression {
 namespace dark::AST {
 
 /* For loop. */
-struct for_stmt final : statement {
+struct for_stmt final : statement, loop_type {
     statement  *init {};
     expression *cond {};
     expression *step {};
@@ -99,7 +99,7 @@ struct for_stmt final : statement {
 };
 
 /* While loop. */
-struct while_stmt final : statement {
+struct while_stmt final : statement, loop_type {
     expression *cond {};
     statement  *body {};
     void print() const override;
@@ -109,12 +109,15 @@ struct while_stmt final : statement {
 /* Flow controller. */
 struct flow_stmt final : statement {
     enum {
+        RETURN,
         BREAK,
         CONTINUE,
-        RETURN,
-    } type;
+    } sort; // Type of the flow controller.
     expression *expr {};    // Return value (if any)
-    function   *func {};    // Function it belongs to.
+    union {
+        function   *func {} ;   // Function it belongs to.
+        loop_type  *loop    ;   // Loop it belongs to.
+    };
 
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visitFlow(this); }
@@ -166,6 +169,7 @@ struct variable_def final : definition, statement {
 struct function_def final : definition, identifier {
     argument_list args;     // Arguments of the function.
     statement    *body {};  // Body of the function. If null, it's built-in.
+    std::vector <variable *> locals;    // Local variables.
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visitFunctionDef(this); }
     bool is_builtin() const noexcept { return body == nullptr; }

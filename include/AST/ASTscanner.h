@@ -139,14 +139,14 @@ struct class_scanner : scanner {
 namespace dark::AST {
 
 struct function_scanner : scanner {
-  private:
+  public:
     scope *global;          // Global scope.
-    definition_list &list;
-    class_type *void_ptr {};  // Special typeinfo for void pointer.
+  private:
+    class_type *void_class {};  // Special typeinfo for void pointer.
 
     /* Insert builtin global functions. */
     void insert_global() {
-        typeinfo __int_type= { &class_map["int"], 0, 0 };
+        typeinfo __int_type = { &class_map["int"], 0, 0 };
         typeinfo __str_type = { &class_map["string"], 0, 0 };
         typeinfo __nil_type = { &class_map["void"], 0, 0 };
         global->insert(create_function(__nil_type, "print", "::print", {{ __str_type, "str" }}));
@@ -160,13 +160,13 @@ struct function_scanner : scanner {
 
     /* Check whether there are invalid void in the function. */
     void check_void(function *__func) {
-        if (!void_ptr) void_ptr = &class_map["void"];
+        if (!void_class) void_class = &class_map["void"];
 
-        if (__func->type.base == void_ptr)
+        if (__func->type.base == void_class)
             runtime_assert(__func->type.dimensions == 0, "Void cannot be array");
 
         for (auto &__arg : __func->args)
-            runtime_assert(__arg.type.base != void_ptr, "Void cannot be argument type");
+            runtime_assert(__arg.type.base != void_class, "Void cannot be argument type");
     }
 
     /* Check for global functions. */
@@ -182,7 +182,7 @@ struct function_scanner : scanner {
     void check_member(function *__func, scope *__field) {
         check_void(__func);
         if (!__field->insert(__func)) {
-            if (__func->name == "") 
+            if (__func->name == "")
                 runtime_assert(false,
                     "Constructor cannot be overloaded: \"" , __func->type.data(), "\"");
             else // Non-constructor function.
@@ -192,58 +192,107 @@ struct function_scanner : scanner {
         }
     }
 
-
-    void check_function() {
+    /* Check functions. */
+    void check_function(definition_list &list) {
         for (auto *__def : list) {
             if (auto __func = dynamic_cast <function *> (__def)) {
                 check_global(__func);
                 /* Set up function scope. */
                 __func->field = scope_alloc.allocate();
                 __func->field->prev = global;
-                __func->unique_name = __func->name;
+                __func->unique_name = "::" + __func->name;
             } else if (auto __class = dynamic_cast <class_def *> (__def)) {
-                for (auto __node : __class->member) {
-                    if (auto __func = dynamic_cast <function_def *> (__node)) {
-                        check_member(__func, __class->field);
-                        runtime_assert(__func->name != __class->name, 
-                            "Function name cannot be class name");
-                        runtime_assert(__func->name.size() || __func->type.data() == __class->name,
-                            "Constructor name must be the same as class name");
-
-                        __func->field = scope_alloc.allocate();
-                        __func->field->prev = __class->field;
-                        __func->unique_name = __class->name + "::" + __func->name;
-
-                        /* Insert this pointer. */
-                        __func->field->insert(create_variable(
-                            { &class_map[__func->type.data()], 0, 0 },
-                            "this", __func->unique_name + "::this"
-                        ));
-                    } else { // Member variable.
-                        auto *__list = safe_cast <variable_def *> (__node);
-                        for (auto &&[__name, __init] : __list->vars) {
-                            runtime_assert(__init == nullptr,
-                                "Member variable cannot have default value");
-                            /* Insert and check duplicate of member variables. */
-                            runtime_assert(__class->field->insert(
-                                create_variable(__list->type, __name, __class->name + "::" + __name)
-                            ), "Duplicated member variable name: ", __name);
-                        }
-                    }
-                }
+                check_class(__class);
                 /* Set up the class scope. */
                 __class->field->prev = global;
             }
         }
     }
 
+    /* Check class content. */
+    void check_class(class_def *__class) {
+        for (auto __node : __class->member) {
+            if (auto __func = dynamic_cast <function_def *> (__node)) {
+                check_member(__func, __class->field);
+
+                runtime_assert(__func->name != __class->name,
+                    "Function name cannot be class name");
+
+                runtime_assert(__func->name.size() || __func->type.data() == __class->name,
+                    "Constructor name must be the same as class name");
+
+                __func->field = scope_alloc.allocate();
+                __func->field->prev = __class->field;
+                __func->unique_name = __class->name + "::" + __func->name;
+
+                /* Insert this pointer. ("this" is not assignable) */
+                __func->field->insert(create_variable(
+                    { &class_map[__func->type.data()], 0, false },
+                    "this", __func->unique_name + "::this"
+                ));
+            } else { // Member variable.
+                auto *__list = safe_cast <variable_def *> (__node);
+                for (auto &&[__name, __init] : __list->vars) {
+                    runtime_assert(__init == nullptr,
+                        "Member variable cannot have default value");
+
+                    /* Insert and check duplicate of member variables. */
+                    runtime_assert(__class->field->insert(
+                        create_variable(__list->type, __name, __class->name + "::" + __name)
+                    ), "Duplicated member variable name: ", __name);
+                }
+            }
+        }
+    }
+
   public:
     function_scanner(ASTbuilder *builder, _Alloc_Scope *alloc)
-    : scanner(builder, alloc), global(alloc->allocate()), list(builder->global) {
+    : scanner(builder, alloc), global(alloc->allocate()) {
         this->insert_global();
-        this->check_function();
+        this->check_function(builder->global);
     }
 };
 
+} // namespace dark::AST
+
+namespace dark::AST {
+
+/* Checking operation on the same type. */
+struct type_checker {
+    static bool is_cmp(const operand_t &__op) {
+        return __op.str[1] == '='   // != , == , <= , >=
+           || (__op.str[1] == 0 && (__op.str[0] == '<' || __op.str[0] == '>'));
+    }
+
+    static const char *check_int(binary_expr *ctx) {
+        if (ctx->op.str[0] == ctx->op.str[1])
+            runtime_assert(ctx->op.str[0] != '&' && ctx->op.str[0] != '|',
+                "Invalid logical operator on int");
+        return is_cmp(ctx->op) ? "bool" : "int";
+    }
+
+    static const char *check_bool(binary_expr *ctx) {
+        switch (ctx->op.str[0]) {
+            case '&': case '|': // && and || are valid.
+                if (ctx->op.str[1]) break;
+            case '>': case '<': case '+': case '-': case '*': case '/': case '%': case '^':
+                runtime_assert(false, "Invalid operator on bool");
+        } return "bool";
+    }
+
+    static const char *check_string(binary_expr *ctx) {
+        if (is_cmp(ctx->op)) return "bool";
+        if (ctx->op == "+") return "string";
+        runtime_assert(false, "Invalid operator on string");
+        __builtin_unreachable();
+    }
+
+    /* For class/null type, only != and == are allowed. */
+    static const char *check_other(binary_expr *ctx) {
+        if (ctx->op.str[0] == '=' || ctx->op.str[0] == '!') return "bool";
+        runtime_assert(false, "Invalid operator on ", ctx->lval->type.data());
+        __builtin_unreachable();
+    }
+};
 
 } // namespace dark::AST

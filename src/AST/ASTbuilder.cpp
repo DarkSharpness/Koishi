@@ -163,12 +163,12 @@ std::any ASTbuilder::visitWhile_Stmt(MxParser::While_StmtContext *ctx) {
 std::any ASTbuilder::visitFlow_Stmt(MxParser::Flow_StmtContext *ctx) {
     auto *__flow = pool.allocate <flow_stmt> ();
     if (ctx->Break()) {
-        __flow->type = flow_stmt::BREAK;
+        __flow->sort = flow_stmt::BREAK;
     } else if (ctx->Continue()) {
-        __flow->type = flow_stmt::CONTINUE;
+        __flow->sort = flow_stmt::CONTINUE;
     } else {
         runtime_assert(ctx->Return(), "This should never happen");
-        __flow->type = flow_stmt::RETURN;
+        __flow->sort = flow_stmt::RETURN;
         if (auto *__p = ctx->expression())
             __flow->expr = get_node <expression> (__p);
     }
@@ -178,6 +178,7 @@ std::any ASTbuilder::visitFlow_Stmt(MxParser::Flow_StmtContext *ctx) {
 std::any ASTbuilder::visitVariable_Definition(MxParser::Variable_DefinitionContext *ctx) {
     auto *__var = pool.allocate <variable_def> ();
     __var->type = get_value <typeinfo> (ctx->typename_());
+    __var->type.assignable = true;  // Variable is assignable by default.
     for (auto __p : ctx->init_Stmt()) {
         auto *__init = __p->expression();
         __var->vars.push_back(variable_pair {
@@ -284,11 +285,11 @@ std::any ASTbuilder::visitLiteral(MxParser::LiteralContext *ctx) {
     auto *__ptr     = ctx->literal_Constant();
     __literal->name = ctx->getText();
 
-    if      (__ptr->Number())   __literal->type = literal_expr::NUMBER;
-    else if (__ptr->Null())     __literal->type = literal_expr::_NULL_;
-    else if (__ptr->Cstring())  __literal->type = literal_expr::STRING,
+    if      (__ptr->Number())   __literal->sort = literal_expr::NUMBER;
+    else if (__ptr->Null())     __literal->sort = literal_expr::_NULL_;
+    else if (__ptr->Cstring())  __literal->sort = literal_expr::STRING,
                                 __literal->name = Mx_string_parse(__literal->name);
-    else                        __literal->type = literal_expr::_BOOL_;
+    else                        __literal->sort = literal_expr::_BOOL_;
     return set_node(__literal);
 }
 

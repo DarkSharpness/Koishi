@@ -152,7 +152,7 @@ void while_stmt::print() const {
 
 void flow_stmt::print() const {
     print_indent();
-    switch (type) {
+    switch (sort) {
         case flow_stmt::BREAK:      std::cerr << "break;";    return;
         case flow_stmt::CONTINUE:   std::cerr << "continue;"; return;
         default: /* Do nothing. */ break;

@@ -1,18 +1,56 @@
 #pragma once
 #include "ASTbase.h"
 #include "ASTscope.h"
-#include <unordered_set>
+#include <unordered_map>
 
 namespace dark::AST {
 
 struct ASTchecker final : ASTbase {
   private:
-    using _Map_t = std::unordered_set <class_type, class_hash, class_equal>;
-    using _Alloc = central_allocator <scope>;
+    using _Map_t        = class_list;
+    using _Alloc_Node   = central_allocator <node>;
+    using _Alloc_Scope  = central_allocator <scope>;
 
-    scope *global {};   // global scope
-    _Map_t class_map;   // class map
-    _Alloc alloc;       // allocator for scope
+    scope *global   {};     // global scope
+    scope *top      {};     // top scope currently
+
+    _Map_t &class_map;          // class map
+    _Alloc_Node    &pool;       // allocator for nodes
+    _Alloc_Scope    alloc;      // allocator for scope
+
+    std::vector <loop_type *> loop_stack;   // Loop stack
+    function *  top_function {};            // Current function
+    function *  global_init;                // Global init function.
+    class_type *void_class;                 // Void class.
+
+    /* Map of functions to their class_type. */
+    std::unordered_map <function *,class_type> function_map;
+    /* Map of functions to its variable count. */
+    std::unordered_map <function *,std::size_t> variable_count;
+
+    void create_init();
+    void check_main();
+    void visit_init();
+
+    /* Return the typeinfo of an identifier. */
+    typeinfo get_type(identifier *);
+
+    /* Return the typeinfo of a class by its name. */
+    template <typename _Str>
+    requires std::convertible_to <_Str, std::string>
+    typeinfo get_type(_Str &&__str, int __n = 0, bool __a = false) {
+        return typeinfo {
+            .base = &class_map[std::forward <_Str> (__str)],
+            .dimensions = __n,
+            .assignable = __a,
+        };
+    }
+
+    /* Return whether a typeinfo is void or void array. */
+    bool is_void(typeinfo __type) const { return __type.base == void_class; }
+
+    /* Create a variable under a function scope. */
+    variable *create_variable(typeinfo, std::string);
 
   public:
 
@@ -29,7 +67,6 @@ struct ASTchecker final : ASTbase {
 
     void visitFor(for_stmt *) override;
     void visitWhile(while_stmt *) override;
-    void visitReturn(return_stmt *) override;
     void visitFlow(flow_stmt *) override;
     void visitBlock(block_stmt *) override;
     void visitBranch(branch_stmt *) override;
