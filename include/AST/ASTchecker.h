@@ -21,6 +21,7 @@ struct ASTchecker final : ASTbase {
     std::vector <loop_type *> loop_stack;   // Loop stack
     function *  top_function {};            // Current function
     function *  global_init;                // Global init function.
+    block_stmt *global_body;                // Global init function body
     class_type *void_class;                 // Void class.
 
     /* Map of functions to their class_type. */

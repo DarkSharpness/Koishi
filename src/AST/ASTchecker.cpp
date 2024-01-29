@@ -284,7 +284,7 @@ void ASTchecker::visitSimple(simple_stmt *ctx) {
 void ASTchecker::visitVariableDef(variable_def *ctx) {
     ctx->field = top;
     runtime_assert(!is_void(ctx->type), "Cannot declare void variable");
-    for (const auto &[__name,__init] : ctx->vars) {
+    for (auto &[__name,__init] : ctx->vars) {
         if (__init) {
             visit(__init);
             runtime_assert(
@@ -295,6 +295,7 @@ void ASTchecker::visitVariableDef(variable_def *ctx) {
 
         auto *__var = create_variable(ctx->type, __name);
         runtime_assert(top->insert(__var), "Duplicate variable name");
+
         if (top_function) {
             top_function->locals.push_back(__var);
         } else if (__init && !dynamic_cast <literal_expr *> (__init)) {
@@ -304,18 +305,41 @@ void ASTchecker::visitVariableDef(variable_def *ctx) {
             auto *__atom = pool.allocate <atomic_expr> ();
             __atom->name = __name;
             __atom->real = __var;
-
-
+            __expr->op   = "=";
+            __expr->lval = __atom;
+            __expr->rval = __init;
+            __stmt->expr.push_back(__expr);
+            global_body->stmt.push_back(__stmt);
+            __init = nullptr; // Move the initializer to global init.
         }
-
-
     }
 }
 
 void ASTchecker::visitFunctionDef(function_def *ctx) {
-    
+    top_function = ctx;
+    top = ctx->field; // Function scope has been created in function_scanner.
+
+    for (auto &[__type, __name] : ctx->args) {
+        auto *__var = create_variable(__type, __name);
+        runtime_assert(top->insert(__var), "Duplicate argument name");
+    }
+
+    visit(ctx->body);
+    top = top->prev;
 }
-void ASTchecker::visitClassDef(class_def *) {}
+
+void ASTchecker::visitClassDef(class_def *ctx) {
+    top = ctx->field;
+    /**
+     * Only check member functions
+     * Member variables have been checked in function_scanner.
+    */
+    for (auto __p : ctx->member)
+        if (dynamic_cast <function *> (__p)) visit(__p);
+
+    top = top->prev;
+}
+
 
 void ASTchecker::create_init() {
     global_init = pool.allocate <function_def> ();
@@ -323,7 +347,8 @@ void ASTchecker::create_init() {
     global_init->type   = get_type("void");
     global_init->name   = "_Global_Init";
     global_init->unique_name = "::_Global_Init";
-    global_init->body   = pool.allocate <block_stmt> ();
+    global_body         = pool.allocate <block_stmt> ();
+    global_init->body   = global_body;
 }
 
 void ASTchecker::visit_init() {
