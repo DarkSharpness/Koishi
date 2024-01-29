@@ -91,7 +91,7 @@ struct class_scanner : scanner {
             __temp->insert(create_function(__int_type, "length", "string::length"));
             __temp->insert(create_function(__int_type, "parseInt", "string::parseInt"));
             __temp->insert(create_function(__str_type, "substring", "string::substring",
-                {{ __str_type, "l" }, { __str_type, "r" }}));
+                {{ __int_type, "l" }, { __int_type, "r" }}));
             __temp->insert(create_function(__int_type, "ord", "string::ord",
                 {{ __int_type, "pos" }}));
         } while(false);
