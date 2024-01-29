@@ -160,8 +160,6 @@ struct function_scanner : scanner {
 
     /* Check whether there are invalid void in the function. */
     void check_void(function *__func) {
-        if (!void_class) void_class = &class_map["void"];
-
         if (__func->type.base == void_class)
             runtime_assert(__func->type.dimensions == 0, "Void cannot be array");
 
@@ -218,8 +216,11 @@ struct function_scanner : scanner {
                 runtime_assert(__func->name != __class->name,
                     "Function name cannot be class name");
 
-                runtime_assert(__func->name.size() || __func->type.data() == __class->name,
-                    "Constructor name must be the same as class name");
+                if (__func->is_constructor()) {
+                    runtime_assert(__func->type.data() == __class->name,
+                        "Constructor name must be the same as class name");
+                    __func->type = { void_class, 0, 0 };
+                }
 
                 __func->field = scope_alloc.allocate();
                 __func->field->prev = __class->field;
@@ -248,6 +249,7 @@ struct function_scanner : scanner {
   public:
     function_scanner(ASTbuilder *builder, _Alloc_Scope *alloc)
     : scanner(builder, alloc), global(alloc->allocate()) {
+        void_class = &class_map["void"];
         this->insert_global();
         this->check_function(builder->global);
     }

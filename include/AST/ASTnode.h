@@ -173,6 +173,7 @@ struct function_def final : definition, identifier {
     void print() const override;
     void accept(ASTbase *visitor) override { visitor->visitFunctionDef(this); }
     bool is_builtin() const noexcept { return body == nullptr; }
+    bool is_constructor() const noexcept { return name.empty(); }
 };
 
 struct class_def final : definition {
