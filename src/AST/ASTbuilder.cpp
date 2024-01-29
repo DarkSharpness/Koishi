@@ -49,6 +49,7 @@ std::any ASTbuilder::visitFunction_Definition(MxParser::Function_DefinitionConte
                 .type = get_value <typeinfo> (__p->typename_()),
                 .name = __p->Identifier()->getText(),
         });
+        for (auto &__arg : __func->args) __arg.type.assignable = true;
     }
 
     __func->body = get_node <statement> (ctx->block_Stmt());
