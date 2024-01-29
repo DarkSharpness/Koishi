@@ -132,7 +132,8 @@ struct operand_t {
 
     operand_t() = default;
 
-    void operator = (std::string  &&  __str) noexcept { return operator = (__str); }
+    template <typename _T> requires std::same_as <_T, std::string>
+    void operator = (_T &&__str) noexcept { return operator = (__str); }
     void operator = (std::string_view __str) noexcept {
         runtime_assert(__str.size() < 8, "operand string too long");
         for (size_t i = 0; i < __str.size(); ++i) str[i] = __str[i];
