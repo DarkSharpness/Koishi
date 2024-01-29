@@ -271,9 +271,16 @@ void ASTchecker::visitBranch(branch_stmt *ctx) {
         visit(__cond);
         runtime_assert(__cond->type == get_type("bool"),
             "Condition must be bool");
+        top = alloc.allocate(top);
         visit(__body);
+        top = top->prev;
     }
-    if (ctx->else_body) visit(ctx->else_body);
+
+    if (ctx->else_body) {
+        top = alloc.allocate(top);
+        visit(ctx->else_body);
+        top = top->prev;
+    }
 }
 
 void ASTchecker::visitSimple(simple_stmt *ctx) {
