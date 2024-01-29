@@ -325,6 +325,7 @@ void ASTchecker::visitFunctionDef(function_def *ctx) {
     }
 
     visit(ctx->body);
+    top_function = nullptr;
     top = top->prev;
 }
 
