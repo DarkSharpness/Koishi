@@ -4,6 +4,12 @@
 /* Node part */
 namespace dark::AST {
 
+struct bracket_expr final : expression {
+    expression *expr;
+    std::string to_string()const override;
+    void accept(ASTbase *visitor) override { visitor->visitBracket(this); }
+};
+
 /* Array access */
 struct subscript_expr final : expression {
     expression *expr;

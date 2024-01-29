@@ -10,6 +10,7 @@ struct node;
 struct scope;
 struct class_type;
 
+struct bracket_expr;
 struct subscript_expr;
 struct function_expr;
 struct unary_expr;
@@ -42,6 +43,7 @@ struct ASTbase {
     void visit(node *__n) { __n->accept(this); }
     virtual ~ASTbase() = default;
 
+    virtual void visitBracket(bracket_expr *) = 0;
     virtual void visitSubscript(subscript_expr *) = 0;
     virtual void visitFunction(function_expr *) = 0;
     virtual void visitUnary(unary_expr *) = 0;

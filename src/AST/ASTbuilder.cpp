@@ -213,7 +213,9 @@ std::any ASTbuilder::visitFunction(MxParser::FunctionContext *ctx) {
 }
 
 std::any ASTbuilder::visitBracket(MxParser::BracketContext *ctx) {
-    return visit(ctx->expression());
+    auto *__bracket = pool.allocate <bracket_expr> ();
+    __bracket->expr = get_node <expression> (ctx->expression());
+    return set_node(__bracket);
 }
 
 std::any ASTbuilder::visitMember(MxParser::MemberContext *ctx) {

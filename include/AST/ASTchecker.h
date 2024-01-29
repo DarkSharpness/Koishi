@@ -56,6 +56,7 @@ struct ASTchecker final : ASTbase {
   public:
 
     ASTchecker(ASTbuilder *);
+    void visitBracket(bracket_expr *) override;
     void visitSubscript(subscript_expr *) override;
     void visitFunction(function_expr *) override;
     void visitUnary(unary_expr *) override;

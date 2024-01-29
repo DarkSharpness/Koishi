@@ -32,6 +32,12 @@ ASTchecker::ASTchecker(ASTbuilder *__builder)
     visit_init();
 }
 
+void ASTchecker::visitBracket(bracket_expr *ctx) {
+    ctx->field = top;
+    visit(ctx->expr);
+    ctx->type = ctx->expr->type;
+}
+
 void ASTchecker::visitSubscript(subscript_expr *ctx) {
     ctx->field = top;
     for (auto __p : ctx->subscript) {

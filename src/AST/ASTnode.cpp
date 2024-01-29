@@ -6,8 +6,6 @@ namespace dark::AST {
 
 static std::size_t global_indent = 0;
 
-
-
 [[nodiscard]]std::string_view
 print_indent(std::size_t __n = global_indent) {
     static const char __buf[] = // 128 at most.
@@ -59,6 +57,10 @@ std::string typeinfo::data() const noexcept {
 
 /* Expression part. */
 namespace dark::AST {
+
+std::string bracket_expr::to_string() const {
+    return std::format("({})", expr->to_string());
+}
 
 std::string subscript_expr::to_string() const {
     std::vector <std::string> __ret;
