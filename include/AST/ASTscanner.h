@@ -227,7 +227,7 @@ struct function_scanner : scanner {
 
                 /* Insert this pointer. ("this" is not assignable) */
                 __func->field->insert(create_variable(
-                    { &class_map[__func->type.data()], 0, false },
+                    { &class_map[__class->name], 0, false },
                     "this", __func->unique_name + "::this"
                 ));
             } else { // Member variable.
