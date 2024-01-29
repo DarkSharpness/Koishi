@@ -33,8 +33,8 @@ struct class_def;
 
 struct node {
     scope *field {}; // pointer to scope
-    virtual void print() const = 0;
     virtual void accept(ASTbase *) = 0;
+    virtual std::string to_string() const = 0;
     virtual ~node() = default;
 };
 /* Visitor base class. */
@@ -171,7 +171,7 @@ struct identifier : argument {
 
 /* A simple variable as identifier. */
 struct variable : node, identifier {
-    void print() const override {
+    std::string to_string() const override {
         runtime_assert(false, "variable::print() should not be called");
         __builtin_unreachable();
     }

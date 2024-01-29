@@ -1,6 +1,7 @@
 #pragma once
 #include "ASTbase.h"
 #include "MxParserVisitor.h"
+#include <sstream>
 
 namespace dark::AST {
 
@@ -27,8 +28,10 @@ struct ASTbuilder final : public MxParserVisitor {
 
     ASTbuilder(MxParser::File_InputContext *ctx) { visitFile_Input(ctx); }
 
-    void debug() const noexcept {
-        for (auto &i : global) { i->print(); std::cerr << '\n'; }
+    std::string ASTtree() const noexcept {
+        std::stringstream str;
+        for (auto *__p : global) str << __p->to_string() << '\n';
+        return str.str();
     }
 
   public:   // Override part

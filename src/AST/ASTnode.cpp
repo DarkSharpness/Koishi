@@ -6,41 +6,47 @@ namespace dark::AST {
 
 static std::size_t global_indent = 0;
 
-void print_indent() {
-    for (std::size_t i = 0; i < global_indent; ++i)
-        std::cout << "    ";
+
+
+[[nodiscard]]std::string_view
+print_indent(std::size_t __n = global_indent) {
+    static const char __buf[] = // 128 at most.
+        "                                "
+        "                                "
+        "                                "
+        "                                ";
+    const auto __size = __n * 4;
+    runtime_assert(__size < sizeof(__buf), "Too long indent. wtf are u writing?");    
+    return std::string_view { __buf, __size };
 }
 
 /**
  * @brief Print the statment after a field.
  * E.g. for, while, if, else, etc.
  */
-void print_field(const statement *stmt) {
+[[nodiscard]] std::string
+print_field(const statement *stmt) {
     if (auto __blk = dynamic_cast <const block_stmt *> (stmt)) {
-        if (__blk->stmt.empty()) {
-            std::cerr << "{}\n";
-            return;
+        if (__blk->stmt.empty()) return " {}";
+        std::vector <std::string> __ret = { " {\n" };
+
+        ++global_indent;
+        for (auto __p : __blk->stmt) {
+            __ret.emplace_back(__p->to_string());
+            __ret.emplace_back("\n");
         }
-        std::cerr << "{\n"; 
-
-        ++global_indent;
-        for (auto __p : __blk->stmt) {__p->print(); std::cout << '\n';}
         --global_indent;
 
-        print_indent();
-        std::cerr << "}\n";
+        __ret.emplace_back(print_indent());
+        __ret.emplace_back("}");
+        return join_strings(__ret);
     } else {
-        std::cerr << '\n';
-
         ++global_indent;
-        stmt->print();
+        auto __str = stmt->to_string();
         --global_indent;
-
-        std::cerr << '\n';
+        return '\n' + std::move(__str);
     }
 }
-
-
 
 std::string typeinfo::data() const noexcept {
     std::string __str = base->name;
@@ -54,208 +60,244 @@ std::string typeinfo::data() const noexcept {
 /* Expression part. */
 namespace dark::AST {
 
-void subscript_expr::print() const {
-    expr->print();
+std::string subscript_expr::to_string() const {
+    std::vector <std::string> __ret;
+    __ret.reserve(3 * subscript.size() + 1);
+    __ret.emplace_back(expr->to_string());
     for (auto __p : subscript) {
-        std::cerr << "["; __p->print(); std::cerr << "]";
+        __ret.emplace_back("[");
+        __ret.emplace_back(__p->to_string());
+        __ret.emplace_back("[");
     }
+    return join_strings(__ret);
 }
 
-void function_expr::print() const {
-    func->print();
-    std::cerr << "(";
+std::string function_expr::to_string() const {
+    std::vector <std::string> __ret;
+    __ret.reserve(2 * args.size() + 3);
+
+    __ret.emplace_back(func->to_string());
+    __ret.emplace_back("(");
     bool __first = true;
     for (auto __p : args) {
         if (__first) __first = false;
-        else std::cerr << ", ";
-        __p->print();
+        else __ret.emplace_back(", ");
+        __ret.emplace_back(__p->to_string());
     }
-    std::cerr << ")";
+    __ret.emplace_back(")");
+    return join_strings(__ret);
 }
 
-void unary_expr::print() const {
-    if (op.str[2] != '\0') {
-        expr->print();
-        std::cerr << op.str[0] << op.str[1];
+std::string unary_expr::to_string() const {
+    if (op.str[2] != '\0') { // Suffix ++ or --
+        return expr->to_string() + op.str[0] + op.str[0];
     } else {
-        std::cerr << op.str;
-        expr->print();
+        return op.str + expr->to_string();
     }
 }
 
-void binary_expr::print() const {
-    lval->print();
-    std::cerr << " " << op.str << " ";
-    rval->print();
+std::string binary_expr::to_string() const {
+    return std::format("{} {} {}",
+        lval->to_string(), op.str, rval->to_string());
 }
 
-void ternary_expr::print() const {
-    cond->print();
-    std::cerr << " ? ";
-    lval->print();
-    std::cerr << " : ";
-    rval->print();
+std::string ternary_expr::to_string() const {
+    return std::format("{} ? {} : {}",
+        cond->to_string(), lval->to_string(), rval->to_string());
 }
 
-void member_expr::print() const {
-    expr->print();
-    std::cerr << '.' << name;
+std::string member_expr::to_string() const {
+    return std::format("{}.{}", expr->to_string(), name);
 }
 
-void construct_expr::print() const {
-    std::cerr << "new " << type.base->name;
-    std::size_t i = 0;
-    for (; i != subscript.size(); ++i) {
-        std::cerr << '[';
-        subscript[i]->print();
-        std::cerr << ']';
+std::string construct_expr::to_string() const {
+    std::vector <std::string> __ret;
+
+    __ret.emplace_back("new ");
+    __ret.emplace_back(type.base->name);
+
+    for (std::size_t i = 0; i != subscript.size(); ++i) {
+        __ret.emplace_back("[");
+        __ret.emplace_back(subscript[i]->to_string());
+        __ret.emplace_back("]");
     }
-    for (; (int)i != type.dimensions; ++i) std::cerr << "[]";
+
+    std::string __str;
+    int i = int(subscript.size());
+    __str.reserve((type.dimensions - i) << 1);
+    while (i++ != type.dimensions) (__str += '[') += ']';
+    __ret.emplace_back(std::move(__str));
+
+    return join_strings(__ret);
 }
 
-void atomic_expr::print()   const { std::cerr << name; }
+std::string atomic_expr::to_string()   const { return name; }
 
-void literal_expr::print()  const { std::cerr << name; }
+std::string literal_expr::to_string()  const { return name; }
 
 } // namespace dark::AST
 
 /* Statement part. */
 namespace dark::AST {
 
-void for_stmt::print() const {
-    print_indent();
-    std::cerr << "for (";
+std::string for_stmt::to_string() const {
     size_t __temp = global_indent;
     global_indent = 0;
-
-    if (init) init->print();
-    std::cerr << ' ';
+    std::string __init = init ? init->to_string() : "";
     global_indent = __temp;
 
-    if (cond) cond->print();
-    std::cerr << "; ";
+    std::string __cond = cond ? cond->to_string() : "";
+    std::string __step = step ? step->to_string() : "";
 
-    if (step) step->print();
-    std::cerr << ") ";
-
-    print_field(body);
+    return std::format("{}for ({} {} ; {}){}",
+        print_indent(), __init, __cond, __step, print_field(body)
+    );
 }
 
-void while_stmt::print() const {
-    print_indent();
-    std::cerr << "while (";
-    cond->print();
-    std::cerr << ") ";
-
-    print_field(body);
+std::string while_stmt::to_string() const {
+    return std::format("{}while ({}){}",
+        print_indent(), cond->to_string(), print_field(body));
 }
 
-void flow_stmt::print() const {
-    print_indent();
-    switch (sort) {
-        case flow_stmt::BREAK:      std::cerr << "break;";    return;
-        case flow_stmt::CONTINUE:   std::cerr << "continue;"; return;
-        default: /* Do nothing. */ break;
+std::string flow_stmt::to_string() const {
+    if (sort != flow_stmt::RETURN) {
+        return std::format("{}{}",
+            print_indent(), sort == flow_stmt::BREAK ? "break" : "continue;");
+    } else {
+        return std::format("{}return{}{}{}",
+            print_indent(),
+            expr ? ' ' : ';',
+            expr ? expr->to_string() : "\0",
+            expr ? ';' : '\0');
     }
-
-    /* Return statement. */
-    std::cerr << "return";
-    if (expr) {
-        std::cerr << ' ';
-        expr->print();
-    }
-    std::cerr << ';';
 }
 
-void block_stmt::print() const {
-    if (stmt.empty()) {
-        std::cerr << "{}";
-        return;
-    }
+std::string block_stmt::to_string() const {
+    if (stmt.empty()) return "";
+    std::vector <std::string> __ret;
+    __ret.reserve(stmt.size() * 2 + 4);
 
-    print_indent();
-    std::cerr << "{\n";
+    __ret.emplace_back(print_indent());
+    __ret.emplace_back("{\n");
 
     ++global_indent;
-    for (auto __p : stmt) { __p->print(); std::cerr << '\n'; }
+    for (auto __p : stmt) {
+        __ret.emplace_back(__p->to_string());
+        __ret.emplace_back("\n");
+    }
     --global_indent;
 
-    print_indent();
-    std::cerr << '}';
+    __ret.emplace_back(print_indent());
+    __ret.emplace_back("}");
+    return join_strings(__ret);
 }
 
-void branch_stmt::print() const {
+std::string branch_stmt::to_string() const {
+    std::vector <std::string> __ret;
+    __ret.reserve(4 * branches.size() + (else_body ? 2 : 0));
+
+    __ret.emplace_back(std::format("{}if (", print_indent()));
     bool __first = true;
     for (auto [__cond,__body] : branches) {
-        print_indent();
-        if (__first) __first = false;
-        else std::cerr << "else ";
-        std::cerr << "if (";
-        __cond->print();
-        std::cerr << ") ";
-        print_field(__body);
+        if (__first) {
+            __first = false;
+        } else {
+            if (__ret.back().back() == '}')
+                __ret.emplace_back(" else if (");
+            else
+                __ret.emplace_back(
+                    std::format("\n{}else if (", print_indent()));
+        }
+
+        __ret.emplace_back(__cond->to_string());
+        __ret.emplace_back(")");
+        __ret.emplace_back(print_field(__body));
     }
+
     if (else_body) {
-        print_indent();
-        std::cerr << "else ";
-        print_field(else_body);
+        if (__ret.back().back() == '}')
+            __ret.emplace_back(" else");
+        else
+            __ret.emplace_back(
+                std::format("\n{}else", print_indent()));
+        __ret.emplace_back(print_field(else_body));
     }
+
+    return join_strings(__ret);
 }
 
-void simple_stmt::print() const {
-    print_indent();
+std::string simple_stmt::to_string() const {
+    std::vector <std::string> __ret;
+    __ret.reserve(expr.size() * 2 + 1);
+
+    __ret.emplace_back(print_indent());
     bool __first = true;
     for (auto __p : expr) {
-        __p->print();
+        __ret.emplace_back(__p->to_string());
         if (__first) __first = false;
-        else std::cerr << ", ";
+        else __ret.emplace_back(", ");
     }
-    std::cerr << ';';
+    __ret.emplace_back(";");
+
+    return join_strings(__ret);
 }
 
 } // namespace dark::AST
 
 namespace dark::AST {
 
-void variable_def::print() const {
-    print_indent();
-    std::cerr << type.data() << ' ';
+std::string variable_def::to_string() const {
+    std::vector <std::string> __ret;
+
+    __ret.emplace_back(print_indent());
+    __ret.emplace_back(type.data() + ' ');
+
     bool __first = true;
     for (auto &&[__name, __expr] : vars) {
         if (__first) __first = false;
-        else std::cerr << ", ";
-        std::cerr << __name;
+        else __ret.emplace_back(", ");
+        __ret.emplace_back(__name);
+
         if (__expr) {
-            std::cerr << " = ";
-            __expr->print();
+            __ret.emplace_back(" = ");
+            __ret.emplace_back(__expr->to_string());
         }
     }
-    std::cerr << ';';
+    __ret.emplace_back(";");
+
+    return join_strings(__ret);
 }
 
-void function_def::print() const {
-    print_indent();
-    std::cerr << type.data() << ' ' << name << '(';
+std::string function_def::to_string() const {
+    std::vector <std::string> __ret;
+
+    __ret.emplace_back(print_indent());
+    __ret.emplace_back(type.data() + ' ' + name + '(');
+
     bool __first = true;
     for (auto &&[__type, __name] : args) {
         if (__first) __first = false;
-        else std::cerr << ", ";
-        std::cerr << __type.data() << ' ' << __name;
+        else __ret.emplace_back(", ");
+        __ret.emplace_back(__type.data() + ' ' + __name);
     }
-    std::cerr << ") ";
-    if (!is_builtin()) print_field(body);
+    __ret.emplace_back(")");
+    if (!is_builtin()) __ret.emplace_back(print_field(body));
+    return join_strings(__ret);
 }
 
-void class_def::print() const {
-    print_indent();
-    std::cerr << "class " << name << " {\n";
+std::string class_def::to_string() const {
+    std::vector <std::string> __ret;
+
+    __ret.emplace_back(std::format("class {} {{\n", name));
 
     ++global_indent;
-    for (auto __p : member) { __p->print(); std::cerr << '\n'; }
+    for (auto __p : member) {
+        __ret.emplace_back(__p->to_string());
+        __ret.emplace_back("\n");
+    } 
     --global_indent;
-
-    print_indent();
-    std::cerr << '}';
+    __ret.emplace_back("};\n");
+    return join_strings(__ret);
 }
 
 

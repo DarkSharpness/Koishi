@@ -8,7 +8,7 @@ namespace dark::AST {
 struct subscript_expr final : expression {
     expression *expr;
     expression_list subscript;
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitSubscript(this); }
 };
 
@@ -16,7 +16,7 @@ struct subscript_expr final : expression {
 struct function_expr final : expression {
     expression *    func;
     expression_list args;
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitFunction(this); }
 };
 
@@ -24,7 +24,7 @@ struct function_expr final : expression {
 struct unary_expr final : expression {
     operand_t   op;     // Suffix "++" will be denoted as "+++"
     expression *expr;
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitUnary(this); }
 };
 
@@ -33,7 +33,7 @@ struct binary_expr final : expression {
     operand_t   op;
     expression *lval;
     expression *rval;
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitBinary(this); }
 };
 
@@ -42,7 +42,7 @@ struct ternary_expr final : expression {
     expression *cond;
     expression *lval;   // Left expression, if cond is true.
     expression *rval;   // Right expression, if cond is false.
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitTernary(this); }
 };
 
@@ -50,14 +50,14 @@ struct ternary_expr final : expression {
 struct member_expr final : expression {
     expression *expr;   // Expression to access.
     std::string name;   // Name of the member.
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitMember(this); }
 };
 
 /* Operator new expression. (May contains array) */
 struct construct_expr final : expression {
     expression_list subscript;
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitConstruct(this); }
 };
 
@@ -65,7 +65,7 @@ struct construct_expr final : expression {
 struct atomic_expr final : expression {
     std::string name;
     identifier *real {};    // Pointer to the identifier.
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitAtomic(this); }
 };
 
@@ -78,7 +78,7 @@ struct literal_expr final : expression {
         _BOOL_,
     } sort; // Type of the literal.
     std::string name;
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitLiteral(this); }
 };
 
@@ -94,7 +94,7 @@ struct for_stmt final : statement, loop_type {
     expression *cond {};
     expression *step {};
     statement  *body {};
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitFor(this); }
 };
 
@@ -102,7 +102,7 @@ struct for_stmt final : statement, loop_type {
 struct while_stmt final : statement, loop_type {
     expression *cond {};
     statement  *body {};
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitWhile(this); }
 };
 
@@ -119,7 +119,7 @@ struct flow_stmt final : statement {
         loop_type  *loop    ;   // Loop it belongs to.
     };
 
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitFlow(this); }
 };
 
@@ -127,7 +127,7 @@ struct flow_stmt final : statement {
 struct block_stmt final : statement {
     std::vector <statement *> stmt;
 
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitBlock(this); }
 };
 
@@ -141,14 +141,14 @@ struct branch_stmt final : statement {
     std::vector <branch_t> branches;
     statement *else_body {};    // May be null, when there is no else.
 
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitBranch(this); }
 };
 
 /* Comma separated expression. */
 struct simple_stmt final : statement {
     expression_list expr;
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitSimple(this); }
 };
 
@@ -162,7 +162,7 @@ namespace dark::AST {
 struct variable_def final : definition, statement {
     typeinfo        type;   // Type of the variables.
     variable_list   vars;   // Variable name-initializer pairs.
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitVariableDef(this); }
 };
 
@@ -170,7 +170,7 @@ struct function_def final : definition, identifier {
     argument_list args;     // Arguments of the function.
     statement    *body {};  // Body of the function. If null, it's built-in.
     std::vector <variable *> locals;    // Local variables.
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitFunctionDef(this); }
     bool is_builtin() const noexcept { return body == nullptr; }
     bool is_constructor() const noexcept { return name.empty(); }
@@ -179,7 +179,7 @@ struct function_def final : definition, identifier {
 struct class_def final : definition {
     std::string     name;   // Name of the class.
     definition_list member; // Member variables and functions.
-    void print() const override;
+    std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitClassDef(this); }
 };
 

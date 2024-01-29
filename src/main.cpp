@@ -1,10 +1,12 @@
 #include "antlr4-runtime.h"
 #include "MxLexer.h"
 #include "MxParser.h"
-#include "ASTerror.h"
 
+#include "ASTerror.h"
 #include "ASTbuilder.h"
 #include "ASTchecker.h"
+
+#include "IRbase.h"
 
 #include <memory>
 
@@ -34,6 +36,7 @@ std::unique_ptr <dark::AST::ASTchecker> check_input(dark::AST::ASTbuilder *ptr) 
 void compiler_work() {
     auto Wankupi    = parse_input();
     auto Hastin     = check_input(Wankupi.get());
+    std::cerr << Wankupi->ASTtree();
 
     Hastin.reset();
     Wankupi.reset();
@@ -41,17 +44,17 @@ void compiler_work() {
 
 
 signed main(int argc, char** argv) {
-    try {
+    // try {
         compiler_work();
-    } catch(const std::exception& e) {
-        /* If non-dark-error, speak out what. */
-        if (!dynamic_cast <const dark::error *> (&e))
-            std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
-    } catch(...) {
-        std::cerr << "Unknown error!" << std::endl;
-        return 1;
-    }
+    // } catch(const std::exception& e) {
+    //     /* If non-dark-error, speak out what. */
+    //     if (!dynamic_cast <const dark::error *> (&e))
+    //         std::cerr << "Error: " << e.what() << std::endl;
+    //     return 1;
+    // } catch(...) {
+    //     std::cerr << "Unknown error!" << std::endl;
+    //     return 1;
+    // }
     std::cerr << "No error." << std::endl; // "No error.
     return 0;
 }
