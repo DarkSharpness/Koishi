@@ -122,8 +122,8 @@ inline std::string Mx_string_parse(std::string_view __src) {
 template <typename _Tp, std::size_t _Nm>
 struct fixed_vector {
   protected:
-    _Tp         data[_Nm];
-    std::size_t length {};
+    _Tp         data[_Nm]   {};
+    std::size_t length      {};
   public:
     using value_type        = _Tp;
     using size_type         = std::size_t;
