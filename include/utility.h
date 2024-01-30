@@ -135,6 +135,12 @@ struct fixed_vector {
     using iterator          = _Tp *;
     using const_iterator    = const _Tp *;
 
+    fixed_vector() noexcept = default;
+    fixed_vector(std::initializer_list <_Tp> __list) {
+        runtime_assert(__list.size() <= _Nm, "Vector overflow.");
+        for (auto &__val : __list) data[length++] = __val;
+    }
+
     std::size_t size() const noexcept { return length; }
 
     void push_back(const _Tp &__val) {
