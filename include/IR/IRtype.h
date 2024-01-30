@@ -129,6 +129,12 @@ struct custom_type final : class_type {
 inline bool __is_null_type(const typeinfo &__type) {
     return __type.dimensions == 0 && __type.base == null_type::ptr();
 }
+inline bool __is_int_type(const typeinfo &__type) {
+    return __type.dimensions == 0 && __type.base == int_type::ptr();
+}
+inline bool __is_bool_type(const typeinfo &__type) {
+    return __type.dimensions == 0 && __type.base == bool_type::ptr();
+}
 
 inline bool operator == (const typeinfo &lhs, const typeinfo &rhs) {
     if (lhs.dimensions == rhs.dimensions) {

@@ -17,9 +17,9 @@ struct definition {
 /* A special type whose value is undefined.  */
 struct undefined final: definition {
     typeinfo type;
-    undefined(typeinfo __type) : type(__type) {}
+    explicit undefined(typeinfo __type) : type(__type) {}
     typeinfo get_value_type()   const override;
-    std::string       data()    const override;
+    std::string        data()   const override;
     ~undefined() override = default;
 };
 
@@ -58,7 +58,7 @@ struct literal : definition {
 struct string_constant final : literal {
     std::string     context;
     cstring_type    stype;
-    string_constant(std::string __ctx) :
+    explicit string_constant(std::string __ctx) :
         context(std::move(__ctx)), stype(context.size()) {}
 
     std::string IRtype() const override;
@@ -70,8 +70,8 @@ struct string_constant final : literal {
 
 /* Integer literal. */
 struct integer_constant final : literal {
-    int value;
-    integer_constant(ssize_t __val) : value(__val) {}
+    const int value;
+    explicit integer_constant(int __val) : value(__val) {}
     std::string IRtype() const override;
     ssize_t to_integer() const override;
     std::string   data() const override;
@@ -80,23 +80,27 @@ struct integer_constant final : literal {
 
 /* Boolean literal */
 struct boolean_constant final : literal {
-    bool value;
-    boolean_constant(bool __val) : value(__val) {}
+    const bool value;
+    explicit boolean_constant(bool __val) : value(__val) {}
     std::string IRtype() const override;
     ssize_t to_integer() const override;
     std::string   data() const override;
     typeinfo get_value_type() const override;
 };
 
-/* Pointer constant. */
+/**
+ * Pointer constant.
+ * 
+ * If (.var != nullptr) :
+ * global_variable @str -> string_constant.
+ * pointer_constant     -> global_variable @str.
+ * 
+ * Else, it represents just "nullptr"
+*/
 struct pointer_constant final : literal {
-    /**
-     * Either point to a special global variable
-     * initialized by a string_constant,
-     * Or point to nullptr.
-    */
-    const global_variable *var;
-    pointer_constant(const global_variable * __var) : var(__var) {}
+    const global_variable *const var;
+    explicit pointer_constant(const global_variable * __var)
+        : var(__var) {}
     std::string IRtype() const override;
     ssize_t to_integer() const override;
     std::string   data() const override;
@@ -124,6 +128,7 @@ struct node {
     virtual void update(definition *, definition *) = 0;
     /* Return whether the node is hard undefined behavior. */
     virtual bool is_undefined_behavior() const { return false; }
+    /* To avoid memory leak. */ 
     virtual ~node() = default;
 };
 
@@ -166,6 +171,32 @@ struct IRbase {
 
     virtual ~IRbase() = default;
 };
+
+/* A global memory pool for IR. */
+struct IRpool {
+  private:
+    IRpool() = delete;
+    inline static central_allocator <node> pool {};
+  public:
+    inline static pointer_constant *__null__    {};
+    inline static integer_constant *__zero__    {};
+    inline static integer_constant *__pos1__    {};
+    inline static integer_constant *__neg1__    {};
+    inline static boolean_constant *__true__    {};
+    inline static boolean_constant *__false__   {};
+
+    /* Initialize the pool. */
+    static void init_pool();
+    /* Allocate one node. */
+    template <typename _Tp>
+    static node *allocate_node() { return pool.allocate <_Tp *> (); }
+
+    static integer_constant *create_integer(int);
+    static boolean_constant *create_boolean(bool);
+    static pointer_constant *create_pointer(const global_variable *);
+    static undefined *create_undefined(typeinfo, int = 0);
+};
+
 
 
 }
