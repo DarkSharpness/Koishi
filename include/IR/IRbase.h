@@ -37,9 +37,10 @@ struct non_literal : definition {
 struct temporary final : non_literal {};
 /* Variables are pointers to value. */
 struct variable : non_literal {};
-struct function_argument final  : variable {};
-struct local_variable    final  : variable {};
-struct global_variable   final  : variable {
+/* Function parameters. */
+struct argument         final  : variable {};
+struct local_variable   final  : variable {};
+struct global_variable  final  : variable {
     /* If constantly initialized, this is the variable's value. */
     literal *const_init {};
     bool is_const() const noexcept { return const_init != nullptr; }
@@ -117,17 +118,14 @@ namespace dark::IR {
 struct IRbase;
 
 struct node {
+    using _Def_List = std::vector <definition *>;
     virtual void accept(IRbase * __v) = 0;
     /* Return the string form IR. */
     virtual std::string data() const = 0;
     /* Return the temporary this statment defines. */
-    virtual temporary * get_def() const = 0;
+    virtual temporary *get_def() const = 0;
     /* Return all the usages of the node. */
-    virtual std::vector <definition *> get_use() const = 0;
-    /* Update the old definition with a new one. */
-    virtual void update(definition *, definition *) = 0;
-    /* Return whether the node is hard undefined behavior. */
-    virtual bool is_undefined_behavior() const { return false; }
+    virtual _Def_List  get_use() const = 0;
     /* To avoid memory leak. */ 
     virtual ~node() = default;
 };
@@ -144,7 +142,7 @@ struct call_stmt;
 struct load_stmt;
 struct store_stmt;
 struct return_stmt;
-struct allocate_stmt;
+struct alloca_stmt;
 struct get_stmt;
 struct phi_stmt;
 struct unreachable_stmt;
@@ -164,7 +162,7 @@ struct IRbase {
     virtual void visitLoad(load_stmt *) = 0;
     virtual void visitStore(store_stmt *) = 0;
     virtual void visitReturn(return_stmt *) = 0;
-    virtual void visitAlloc(allocate_stmt *) = 0;
+    virtual void visitAlloca(alloca_stmt *) = 0;
     virtual void visitGet(get_stmt *) = 0;
     virtual void visitPhi(phi_stmt *) = 0;
     virtual void visitUnreachable(unreachable_stmt *) = 0;
@@ -176,7 +174,8 @@ struct IRbase {
 struct IRpool {
   private:
     IRpool() = delete;
-    inline static central_allocator <node> pool {};
+    inline static central_allocator <node>        pool1 {};
+    inline static central_allocator <non_literal> pool2 {};
   public:
     inline static pointer_constant *__null__    {};
     inline static integer_constant *__zero__    {};
@@ -189,14 +188,15 @@ struct IRpool {
     static void init_pool();
     /* Allocate one node. */
     template <typename _Tp>
-    static node *allocate_node() { return pool.allocate <_Tp *> (); }
+    static _Tp *allocate_node() { return pool1.allocate <_Tp *> (); }
+    /* Allocate one non_literal. */
+    template <typename _Tp>
+    static _Tp *allocate_def()  { return pool2.allocate <_Tp *> (); }
 
     static integer_constant *create_integer(int);
     static boolean_constant *create_boolean(bool);
     static pointer_constant *create_pointer(const global_variable *);
     static undefined *create_undefined(typeinfo, int = 0);
 };
-
-
 
 }
