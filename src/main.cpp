@@ -6,12 +6,12 @@
 #include "ASTbuilder.h"
 #include "ASTchecker.h"
 
-#include "IRbase.h"
+#include "IRbuilder.h"
 
 #include <memory>
 
-std::unique_ptr <dark::AST::ASTbuilder> parse_input() {
-    auto input = std::make_unique <antlr4::ANTLRInputStream> (std::cin);
+std::unique_ptr <dark::AST::ASTbuilder> parse_input(std::istream &is) {
+    auto input = std::make_unique <antlr4::ANTLRInputStream> (is);
 
     auto lexer = std::make_unique <MxLexer> (input.get());
     lexer->removeErrorListeners();
@@ -34,12 +34,21 @@ std::unique_ptr <dark::AST::ASTchecker> check_input(dark::AST::ASTbuilder *ptr) 
 }
 
 void compiler_work() {
-    auto Wankupi    = parse_input();
+    /* From stdin to AST. */
+    auto Wankupi    = parse_input(std::cin);
+    /* AST Level sema check. Build up scope. */
     auto Hastin     = check_input(Wankupi.get());
+
     std::cerr << Wankupi->ASTtree();
 
+    /* From AST to IR. */
+
+
+    /* Release resoures of AST. */
     Hastin.reset();
     Wankupi.reset();
+
+
 }
 
 

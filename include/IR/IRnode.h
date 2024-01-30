@@ -154,14 +154,16 @@ struct phi_stmt final : statement {
  * Hidden impl is intended to provide future
  * support for loop or other info.
  */
-struct block final : std::vector <statement*> , hidden_impl {
+struct block final : hidden_impl {
     std::vector <phi_stmt *> phi;   // All phi functions
     flow_statement *flow {};        // Control flow statement
     std::string     name;           // Label name
-
+    
+    std::vector <statement*>    data;   // All normal statements
     std::vector  <block *>      prev;   // Predecessor blocks
     fixed_vector <block *, 2>   next;   // Successor blocks
 
+    void push_back(statement *);
     void print(std::ostream &) const;   // Print the block data
     bool is_unreachable() const;        // Is this block unreachable?
 };
@@ -170,26 +172,22 @@ struct function final : hidden_impl {
   private:
     std::size_t loop_count {};  // Count of for loops
     std::size_t cond_count {};  // Count of branches
+    std::unordered_map <std::string, std::size_t> temp_count; // Count of temporaries
 
   public:
     std::string name;       // Function name
     typeinfo    type;       // Return type
-    std::vector <argument *>    args;    // Arguments
-    std::vector  <block  *>     blocks;  // All blocks
+    std::vector  <block  *>     data;   // All blocks
+    std::vector <argument *>    args;   // Arguments
 
-    temporary *create_temporary(typeinfo, std::string_view = "");
+    bool is_builtin {};
+
+    temporary *create_temporary(typeinfo, const std::string &);
 
     void push_back(block *);
     void push_back(statement *);
     void print(std::ostream &) const;   // Print the function data
     bool is_unreachable() const;        // Is this function unreachable?
 };
-
-struct initialization {
-    variable *dst;
-    literal  *src;
-    void print(std::ostream &) const;   // Print the initialization data
-};
-
 
 } // namespace dark::IR

@@ -124,6 +124,7 @@ struct custom_type final : class_type {
     bool is_trivial()   const override { return false; }
     std::size_t size()  const override { return layout.size() * kMxPtrSize; }
     std::string_view name()  const override { return class_name; }
+    std::string data()  const;  // Data to print.
 };
 
 inline bool __is_null_type(const typeinfo &__type) {

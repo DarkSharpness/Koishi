@@ -2,6 +2,7 @@
 #include "IRtype.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 /* Some basic definitions */
 namespace dark::IR {
@@ -42,7 +43,7 @@ struct argument         final  : variable {};
 struct local_variable   final  : variable {};
 struct global_variable  final  : variable {
     /* If constantly initialized, this is the variable's value. */
-    literal *const_init {};
+    const literal *const_init {};
     bool is_const() const noexcept { return const_init != nullptr; }
 };
 
@@ -184,18 +185,22 @@ struct IRpool {
     inline static boolean_constant *__true__    {};
     inline static boolean_constant *__false__   {};
 
+    /* Pool from string to global_variable initialized by string. */
+    inline static std::unordered_map <std::string, global_variable> str_pool {};
+
     /* Initialize the pool. */
     static void init_pool();
     /* Allocate one node. */
     template <typename _Tp>
-    static _Tp *allocate_node() { return pool1.allocate <_Tp *> (); }
+    static _Tp *allocate_node() { return pool1.allocate <_Tp> (); }
     /* Allocate one non_literal. */
     template <typename _Tp>
-    static _Tp *allocate_def()  { return pool2.allocate <_Tp *> (); }
+    static _Tp *allocate_def()  { return pool2.allocate <_Tp> (); }
 
     static integer_constant *create_integer(int);
     static boolean_constant *create_boolean(bool);
     static pointer_constant *create_pointer(const global_variable *);
+    static global_variable  *create_string(const std::string &);
     static undefined *create_undefined(typeinfo, int = 0);
 };
 

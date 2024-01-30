@@ -3,6 +3,22 @@
 /* Node::data() */
 namespace dark::IR {
 
+using _Def_List = typename node::_Def_List;
+
+template <typename _Range>
+static std::string make_arglist(_Range &&__list) {
+    std::string __ret; // Arguments.
+    bool __first = true;
+    for (auto *__arg : __list) {
+        if (__first) __first = false;
+        else __ret += ", ";
+        __ret += __arg->get_value_type().name();
+        __ret += ' ';
+        __ret += __arg->data();
+    }
+    return __ret;
+}
+
 std::string compare_stmt::data() const {
     static const char *__map[] = {
         [EQ] = "eq",
@@ -73,15 +89,7 @@ std::string branch_stmt::data() const {
 }
 
 std::string call_stmt::data() const {
-    std::string __list; // Arguments.
-    bool __first = true;
-    for (auto *__arg : args) {
-        if (__first) __first = false;
-        else __list += ", ";
-        __list += __arg->get_value_type().name();
-        __list += ' ';
-        __list += __arg->data();
-    }
+    std::string __list = make_arglist(args);
     std::string __prefix; // Prefix.
     if (dest) __prefix = std::format("{} =", dest->data());
     return std::format(
@@ -189,7 +197,6 @@ std::string phi_stmt::data() const {
 /* Defs and uses. */
 namespace dark::IR {
 
-using _Def_List = typename node::_Def_List;
 
 temporary *compare_stmt::get_def() const { return dest; }
 _Def_List  compare_stmt::get_use() const { return { lval, rval }; }
@@ -226,10 +233,11 @@ _Def_List  phi_stmt::get_use() const {
 /* Some other... */
 namespace dark::IR {
 
+void block::push_back(statement *__stmt) { data.push_back(__stmt); }
 void block::print(std::ostream &os) const {
     os << name << ":\n";
     for (auto *__p : phi)   os << __p->data();
-    for (auto *__p : *this) os << __p->data();
+    for (auto *__p : data)  os << __p->data();
     os << '\n';
 }
 
@@ -237,10 +245,23 @@ bool block::is_unreachable() const {
     return dynamic_cast <unreachable_stmt *> (flow);
 }
 
-temporary *create_temporary(typeinfo __tp, std::string_view __str) {
-    
+temporary *function::create_temporary(typeinfo __tp, const std::string &__str) {
+    auto *__temp = IRpool::allocate_def <temporary> ();
+    __temp->type = __tp;
+    __temp->name = std::format("%{}-{}", __str, temp_count[__str]++);
+    return __temp;
 }
 
+void function::push_back(block *__blk) { data.push_back(__blk); }
+void function::push_back(statement *__stmt) { data.back()->push_back(__stmt); }
+void function::print(std::ostream &os) const {
+    std::string __list = make_arglist(args);
+    os << std::format(
+        "define {} @{}() {{\n",
+        type.name(), name 
+    );
+}
 
+bool function::is_unreachable() const { return data.empty(); }
 
 } // namespace dark::IR

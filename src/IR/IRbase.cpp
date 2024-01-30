@@ -1,4 +1,5 @@
 #include "IRbase.h"
+#include <deque>
 #include <unordered_map>
 
 namespace dark::IR {
@@ -122,6 +123,34 @@ undefined *IRpool::create_undefined(typeinfo __tp, int __hint) {
         if (__is_bool_type(__tp))   return &__bool;
         return &__ptr;
     }
+}
+
+/* Return the global variable constantly initialized by given string. */
+global_variable *IRpool::create_string(const std::string &__name) {
+    static std::deque <string_constant> __strings; 
+
+    auto [__iter, __result] = str_pool.try_emplace(__name);
+    auto *__var = &__iter->second;
+
+    if (!__result) return __var;
+
+    __var->name = std::format("@.str.{}", str_pool.size());
+    __var->type = { string_type::ptr(), 1 };
+
+    __var->const_init = &__strings.emplace_back(__name);
+    return __var;
+}
+
+std::string custom_type::data() const {
+    std::vector <std::string> __ret;
+    __ret.emplace_back(std::format("{} = type {{ ", name()));
+    for (auto __p : layout) {
+        __ret.emplace_back(__p.name());
+        __ret.emplace_back(" , ");
+    }
+    if (member.size()) __ret.back() = " }";
+    else               __ret.back().back() = '}';
+    return join_strings(__ret);
 }
 
 
