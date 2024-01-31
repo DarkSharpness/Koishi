@@ -264,4 +264,33 @@ void function::print(std::ostream &os) const {
 
 bool function::is_unreachable() const { return data.empty(); }
 
+namespace detail {
+
+static function __builtin_function[17] {};
+
+} // namespace detail
+
+
+/**
+ * __Array_size__       = 0
+ * strlen               = 1
+ * __String_substring__ = 2
+ * __String_parseInt__  = 3
+ * __String_ord__       = 4
+ * __print__            = 5
+ * puts                 = 6
+ * __printInt__         = 7
+ * __printlnInt__       = 8
+ * __getString__        = 9
+ * __getInt__           = 10
+ * __toString__         = 11
+ * __string_add__       = 12
+ * strcmp               = 13
+ * malloc               = 14
+ * __new_array1__       = 15
+ * __new_array4__       = 16
+*/
+function *const IRpool::builtin_function = detail::__builtin_function;
+
+
 } // namespace dark::IR
