@@ -206,7 +206,7 @@ std::any ASTbuilder::visitBinary(MxParser::BinaryContext *ctx) {
 
 std::any ASTbuilder::visitFunction(MxParser::FunctionContext *ctx) {
     auto *__function = pool.allocate <function_expr> ();
-    __function->func = get_node <expression> (ctx->l);
+    __function->expr = get_node <expression> (ctx->l);
     if (auto *__p = ctx->expr_List())
         __function->args = get_value <expression_list> (__p);
     return set_node(__function);

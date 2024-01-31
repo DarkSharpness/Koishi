@@ -78,7 +78,7 @@ std::string function_expr::to_string() const {
     std::vector <std::string> __ret;
     __ret.reserve(2 * args.size() + 3);
 
-    __ret.emplace_back(func->to_string());
+    __ret.emplace_back(expr->to_string());
     __ret.emplace_back("(");
     bool __first = true;
     for (auto __p : args) {

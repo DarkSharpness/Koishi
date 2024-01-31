@@ -40,13 +40,17 @@ ASTchecker::ASTchecker(ASTbuilder *__builder)
         auto *__atom = __builder->pool.allocate <atomic_expr> ();
         __atom->name = "_Global_Init";
         __atom->real = global_init;
+        __atom->field = global_init->field;
 
         auto *__call = __builder->pool.allocate <function_expr> ();
-        __call->func = __atom;
+        __call->expr = __atom;
+        __call->func = global_init;
         __call->type = get_type("void");
+        __call->field = global_init->field;
 
         auto *__stmt = __builder->pool.allocate <simple_stmt> ();
         __stmt->expr = { __call };
+        __stmt->field = global_init->field;
 
         __block->stmt.insert(__block->stmt.begin(), __stmt);
     }
@@ -76,10 +80,11 @@ void ASTchecker::visitSubscript(subscript_expr *ctx) {
 
 void ASTchecker::visitFunction(function_expr *ctx) {
     ctx->field = top;
-    visit(ctx->func);
-    auto &__type = ctx->func->type;     // Should be function type.
+    visit(ctx->expr);
+    auto &__type = ctx->expr->type;     // Should be function type.
     runtime_assert(__type.is_function(), "Not a function");
     auto *__func = __type.base->func;   // Real function pointer.
+    ctx->func    = __func;              // Set func.
     runtime_assert(__func->args.size() == ctx->args.size(),
         "Wrong number of arguments");
     auto  __args = __func->args.begin();
@@ -377,7 +382,7 @@ void ASTchecker::visitClassDef(class_def *ctx) {
 
 void ASTchecker::create_init() {
     global_init = pool.allocate <function_def> ();
-    global_init->field  = global;
+    global_init->field  = global; // Global_init will not insert new identifier.
     global_init->type   = get_type("void");
     global_init->name   = "_Global_Init";
     global_init->unique_name = "._Global_Init";

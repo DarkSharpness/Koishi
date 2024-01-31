@@ -20,7 +20,8 @@ struct subscript_expr final : expression {
 
 /* Function calls. */
 struct function_expr final : expression {
-    expression *    func;
+    function   *    func;   // Real function to call.
+    expression *    expr;
     expression_list args;
     std::string to_string()const override;
     void accept(ASTbase *visitor) override { visitor->visitFunction(this); }
