@@ -6,12 +6,13 @@
 namespace dark::AST {
 
 struct ASTchecker final : ASTbase {
+  public:
+    scope *global   {};     // global scope
   private:
     using _Map_t        = class_list;
     using _Alloc_Node   = central_allocator <node>;
     using _Alloc_Scope  = central_allocator <scope>;
 
-    scope *global   {};     // global scope
     scope *top      {};     // top scope currently
 
     _Map_t &class_map;          // class map
