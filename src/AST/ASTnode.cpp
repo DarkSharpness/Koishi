@@ -274,7 +274,10 @@ std::string function_def::to_string() const {
     std::vector <std::string> __ret;
 
     __ret.emplace_back(print_indent());
-    __ret.emplace_back(type.data() + ' ' + name + '(');
+    if (name.empty())
+        __ret.emplace_back("<constructor> (");
+    else
+        __ret.emplace_back(type.data() + ' ' + name + '(');
 
     bool __first = true;
     for (auto &&[__type, __name] : args) {
