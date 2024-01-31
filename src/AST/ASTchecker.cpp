@@ -28,8 +28,9 @@ ASTchecker::ASTchecker(ASTbuilder *__builder)
     create_init();
     for (auto *__def : __builder->global) { top = global; visit(__def); }
     check_main();
-    __builder->global.push_back(global_init);
     visit_init();
+    /* If need init, just push it back. */
+    if (global_init) __builder->global.push_back(global_init);
 }
 
 void ASTchecker::visitBracket(bracket_expr *ctx) {
@@ -360,7 +361,7 @@ void ASTchecker::create_init() {
     global_init->field  = global;
     global_init->type   = get_type("void");
     global_init->name   = "_Global_Init";
-    global_init->unique_name = "::_Global_Init";
+    global_init->unique_name = "._Global_Init";
     global_body         = pool.allocate <block_stmt> ();
     global_init->body   = global_body;
 }
@@ -368,7 +369,11 @@ void ASTchecker::create_init() {
 void ASTchecker::visit_init() {
     top = global;
     visit(global_init);
+    auto *__blk = safe_cast <block_stmt *> (global_init->body);
+    /* If there is no global variable to init, then we do not need global init. */
+    if (__blk->stmt.empty()) global_init = nullptr;
 }
+
 
 void ASTchecker::check_main() {
     auto *__func = dynamic_cast <function *> (global->find("main"));

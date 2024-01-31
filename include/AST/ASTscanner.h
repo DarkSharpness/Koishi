@@ -81,18 +81,18 @@ struct class_scanner : scanner {
             auto *__temp = scope_alloc.allocate();
             class_map["_Array"].field = __temp;
             /* Insert builtin member functions. */
-            __temp->insert(create_function(__int_type, "size", "_Array::size"));
+            __temp->insert(create_function(__int_type, "size", "_Array.size"));
         } while(false);
 
         do {    /* String type. */
             auto *__temp = scope_alloc.allocate();
             class_map["string"].field = __temp;
             /* Insert builtin member functions. */
-            __temp->insert(create_function(__int_type, "length", "string::length"));
-            __temp->insert(create_function(__int_type, "parseInt", "string::parseInt"));
-            __temp->insert(create_function(__str_type, "substring", "string::substring",
+            __temp->insert(create_function(__int_type, "length", "string.length"));
+            __temp->insert(create_function(__int_type, "parseInt", "string.parseInt"));
+            __temp->insert(create_function(__str_type, "substring", "string.substring",
                 {{ __int_type, "l" }, { __int_type, "r" }}));
-            __temp->insert(create_function(__int_type, "ord", "string::ord",
+            __temp->insert(create_function(__int_type, "ord", "string.ord",
                 {{ __int_type, "pos" }}));
         } while(false);
     }
@@ -149,13 +149,13 @@ struct function_scanner : scanner {
         typeinfo __int_type = { &class_map["int"], 0, 0 };
         typeinfo __str_type = { &class_map["string"], 0, 0 };
         typeinfo __nil_type = { &class_map["void"], 0, 0 };
-        global->insert(create_function(__nil_type, "print", "::print", {{ __str_type, "str" }}));
-        global->insert(create_function(__nil_type, "println", "::println", {{ __str_type, "str" }}));
-        global->insert(create_function(__nil_type, "printInt", "::printInt", {{ __int_type, "n" }}));
-        global->insert(create_function(__nil_type, "printlnInt", "::printlnInt", {{ __int_type, "n" }}));
-        global->insert(create_function(__str_type, "getString", "::getString"));
-        global->insert(create_function(__int_type, "getInt", "::getInt"));
-        global->insert(create_function(__str_type, "toString", "::toString", {{ __int_type, "n" }}));
+        global->insert(create_function(__nil_type, "print", ".print", {{ __str_type, "str" }}));
+        global->insert(create_function(__nil_type, "println", ".println", {{ __str_type, "str" }}));
+        global->insert(create_function(__nil_type, "printInt", ".printInt", {{ __int_type, "n" }}));
+        global->insert(create_function(__nil_type, "printlnInt", ".printlnInt", {{ __int_type, "n" }}));
+        global->insert(create_function(__str_type, "getString", ".getString"));
+        global->insert(create_function(__int_type, "getInt", ".getInt"));
+        global->insert(create_function(__str_type, "toString", ".toString", {{ __int_type, "n" }}));
     }
 
     /* Check whether there are invalid void in the function. */
@@ -198,7 +198,7 @@ struct function_scanner : scanner {
                 /* Set up function scope. */
                 __func->field = scope_alloc.allocate();
                 __func->field->prev = global;
-                __func->unique_name = "::" + __func->name;
+                __func->unique_name = "." + __func->name;
             } else if (auto __class = dynamic_cast <class_def *> (__def)) {
                 check_class(__class);
                 /* Set up the class scope. */
@@ -224,12 +224,12 @@ struct function_scanner : scanner {
 
                 __func->field = scope_alloc.allocate();
                 __func->field->prev = __class->field;
-                __func->unique_name = __class->name + "::" + __func->name;
+                __func->unique_name = __class->name + "." + __func->name;
 
                 /* Insert this pointer. ("this" is not assignable) */
                 __func->field->insert(create_variable(
                     { &class_map[__class->name], 0, false },
-                    "this", __func->unique_name + "::this"
+                    "this", __func->unique_name + ".this"
                 ));
             } else { // Member variable.
                 auto *__list = safe_cast <variable_def *> (__node);
@@ -239,7 +239,7 @@ struct function_scanner : scanner {
 
                     /* Insert and check duplicate of member variables. */
                     runtime_assert(__class->field->insert(
-                        create_variable(__list->type, __name, __class->name + "::" + __name)
+                        create_variable(__list->type, __name, __class->name + "." + __name)
                     ), "Duplicated member variable name: ", __name);
                 }
             }
