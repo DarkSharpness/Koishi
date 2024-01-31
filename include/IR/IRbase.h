@@ -117,6 +117,7 @@ struct pointer_constant final : literal {
 namespace dark::IR {
 
 struct IRbase;
+struct IRbuilder;
 
 struct node {
     using _Def_List = std::vector <definition *>;
@@ -127,14 +128,10 @@ struct node {
     virtual temporary *get_def() const = 0;
     /* Return all the usages of the node. */
     virtual _Def_List  get_use() const = 0;
-    /* To avoid memory leak. */ 
+    /* To avoid memory leak. */
     virtual ~node() = default;
 };
 
-/* Declaration. */
-struct block_stmt;
-struct function;
-struct initialization;
 struct compare_stmt;
 struct binary_stmt;
 struct jump_stmt;
@@ -148,12 +145,12 @@ struct get_stmt;
 struct phi_stmt;
 struct unreachable_stmt;
 
+using  statement = node;
+struct flow_statement : statement {};
+struct memory_statement : statement {};
+
 struct IRbase {
     void visit(node * __n) { return __n->accept(this); }
-
-    virtual void visitBlock(block_stmt *) = 0;
-    virtual void visitFunction(function *) = 0;
-    virtual void visitInit(initialization *) = 0;
 
     virtual void visitCompare(compare_stmt *) = 0;
     virtual void visitBinary(binary_stmt *) = 0;
@@ -177,6 +174,7 @@ struct IRpool {
     IRpool() = delete;
     inline static central_allocator <node>        pool1 {};
     inline static central_allocator <non_literal> pool2 {};
+    using _Function_Ptr = function *;
   public:
     inline static pointer_constant *__null__    {};
     inline static integer_constant *__zero__    {};
@@ -184,6 +182,8 @@ struct IRpool {
     inline static integer_constant *__neg1__    {};
     inline static boolean_constant *__true__    {};
     inline static boolean_constant *__false__   {};
+
+    static const _Function_Ptr builtin_function;
 
     /* Pool from string to global_variable initialized by string. */
     inline static std::unordered_map <std::string, global_variable> str_pool {};
@@ -204,4 +204,51 @@ struct IRpool {
     static undefined *create_undefined(typeinfo, int = 0);
 };
 
-}
+/**
+ * @brief A block consists of:
+ * 1. Phi functions
+ * 2. Statements
+ * 3. Control flow statement
+ * 
+ * Hidden impl is intended to provide future
+ * support for loop or other info.
+ */
+struct block final : hidden_impl {
+    std::vector <phi_stmt *> phi;   // All phi functions
+    flow_statement *flow {};        // Control flow statement
+    std::string     name;           // Label name
+    
+    std::vector <statement*>    data;   // All normal statements
+    std::vector  <block *>      prev;   // Predecessor blocks
+    fixed_vector <block *, 2>   next;   // Successor blocks
+
+    void push_back(statement *);
+    void print(std::ostream &) const;   // Print the block data
+    bool is_unreachable() const;        // Is this block unreachable?
+};
+
+struct function final : hidden_impl {
+  private:
+    std::size_t loop_count {};  // Count of for loops
+    std::size_t cond_count {};  // Count of branches
+    std::unordered_map <std::string, std::size_t> temp_count; // Count of temporaries
+
+  public:
+    std::string name;       // Function name
+    typeinfo    type;       // Return type
+    std::vector  <block  *>     data;   // All blocks
+    std::vector <argument *>    args;   // Arguments
+
+    bool is_builtin {};
+    bool has_input  {};
+    bool has_output {};
+
+    temporary *create_temporary(typeinfo, const std::string &);
+
+    void push_back(block *);
+    void push_back(statement *);
+    void print(std::ostream &) const;   // Print the function data
+    bool is_unreachable() const;        // Is this function unreachable?
+};
+
+} // namespace dark::IR

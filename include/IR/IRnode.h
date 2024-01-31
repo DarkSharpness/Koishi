@@ -3,12 +3,6 @@
 
 namespace dark::IR {
 
-using  statement = node;
-struct flow_statement : statement {};
-struct memory_statement : statement {};
-struct function;
-struct block;
-
 struct compare_stmt final : statement {
     temporary  *dest;
     definition *lval;
@@ -143,51 +137,6 @@ struct phi_stmt final : statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
-};
-
-/**
- * @brief A block consists of:
- * 1. Phi functions
- * 2. Statements
- * 3. Control flow statement
- * 
- * Hidden impl is intended to provide future
- * support for loop or other info.
- */
-struct block final : hidden_impl {
-    std::vector <phi_stmt *> phi;   // All phi functions
-    flow_statement *flow {};        // Control flow statement
-    std::string     name;           // Label name
-    
-    std::vector <statement*>    data;   // All normal statements
-    std::vector  <block *>      prev;   // Predecessor blocks
-    fixed_vector <block *, 2>   next;   // Successor blocks
-
-    void push_back(statement *);
-    void print(std::ostream &) const;   // Print the block data
-    bool is_unreachable() const;        // Is this block unreachable?
-};
-
-struct function final : hidden_impl {
-  private:
-    std::size_t loop_count {};  // Count of for loops
-    std::size_t cond_count {};  // Count of branches
-    std::unordered_map <std::string, std::size_t> temp_count; // Count of temporaries
-
-  public:
-    std::string name;       // Function name
-    typeinfo    type;       // Return type
-    std::vector  <block  *>     data;   // All blocks
-    std::vector <argument *>    args;   // Arguments
-
-    bool is_builtin {};
-
-    temporary *create_temporary(typeinfo, const std::string &);
-
-    void push_back(block *);
-    void push_back(statement *);
-    void print(std::ostream &) const;   // Print the function data
-    bool is_unreachable() const;        // Is this function unreachable?
 };
 
 } // namespace dark::IR
