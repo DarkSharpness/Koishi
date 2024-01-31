@@ -111,14 +111,13 @@ struct null_type final : class_type {
 
 /* User-defined classes. */
 struct custom_type final : class_type {
-  private:
+  public:
     function *  constructor{};
     std::string class_name;   // '%' + class name
 
     std::vector <typeinfo>      layout;
     std::vector <std::string>   member;
 
-  public:
     custom_type(std::string __name) : class_name(std::move(__name)) {}
 
     bool is_trivial()   const override { return false; }
