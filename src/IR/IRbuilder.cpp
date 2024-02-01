@@ -3,8 +3,8 @@
 #include "ASTbuilder.h"
 #include "IRnode.h"
 #include "IRbuilder.h"
+#include <ranges>
 #include <sstream>
-#include <algorithm>
 
 namespace dark::IR {
 
@@ -642,15 +642,15 @@ void IRbuilder::visitMember(AST::member_expr *ctx) {
 
 void IRbuilder::visitConstruct(AST::construct_expr *ctx) {
     std::vector <definition *> __subscript;
-    for (auto *__p : ctx->subscript) {
+
+    /* Reverse the subscript order. */
+    for (auto *__p : ctx->subscript | std::views::reverse) {
         visit(__p);
         __subscript.push_back(get_value());
     }
 
-    std::reverse(__subscript.begin(), __subscript.end());
     const auto __type = transform_type(ctx->type);
-    if (__subscript.size())
-        return visitNewArray(__type, std::move(__subscript));
+    if (__subscript.size()) return visitNewArray(__type, std::move(__subscript));
 
     /**
      * Allocate exactly one object case.
@@ -659,7 +659,7 @@ void IRbuilder::visitConstruct(AST::construct_expr *ctx) {
      */
     auto *__class = safe_cast <const custom_type *> (__type.base);
     auto *__func = IRpool::builtin_function + 14;
-    auto *__dest = top->create_temporary(__type, "new");
+    auto *__dest = top->create_temporary(__type, "new.obj");
     auto *__call = IRpool::allocate <call_stmt> (__dest, __func);
     __call->args = { IRpool::create_integer(__class->size()) };
     top_block->push_back(__call);
@@ -928,8 +928,70 @@ void IRbuilder::visitGlobalVariable(AST::variable *ctx, AST::literal_expr *__lit
  * @param __args Index of each dimension (reverse order).
  */
 void IRbuilder::visitNewArray(typeinfo __type, std::vector <definition *> __args) {
-    throw std::string("Debug");
-    runtime_assert(false, "Not implemented yet.");
+    using _Blk_2 = block *[2];
+    /* Find the corresponding new function. */
+    constexpr auto __get_function = [](typeinfo __tp) -> function * {
+        std::size_t __n = (--__tp).size();
+        if (__n == 1) return IRpool::builtin_function + 15;
+        if (__n == 4) return IRpool::builtin_function + 16;
+        runtime_assert(false, "This should never happen!");
+        __builtin_unreachable();
+    };
+
+    /* Length of current dimension. */
+    auto *__len = __args.back(); __args.pop_back();
+
+    /* Call __new_array to get the storage. */
+    auto *__data = top->create_temporary(__type, "new.beg");
+    auto *__call = IRpool::allocate <call_stmt> (__data, __get_function(__type));
+    __call->args = { __len };
+    top_block->push_back(__call);
+
+    /* Mission done...... */
+    if (__args.empty()) return set_value(__data);
+
+    /* Iteration from tail to front. */
+    auto *__tail = top->create_temporary(__type, "new.end");
+    top_block->push_back(IRpool::allocate <get_stmt> (__tail, __data, __len));
+
+    auto *__loop_cond = IRpool::allocate <block> ();
+    auto *__loop_body = IRpool::allocate <block> ();
+    auto *__loop_exit = IRpool::allocate <block> ();
+
+    auto *__iter = top->create_temporary(__type, "new.cur");
+    auto *__temp = top->create_temporary(__type, "new.sub");
+
+    /* First, inserting phi to collect the value. */
+    __loop_cond->push_phi(IRpool::allocate <phi_stmt> (
+        __iter, _Phi_List {
+            { top_block  , __tail },
+            { __loop_body, __temp }
+    }));
+
+    end_block(IRpool::allocate <jump_stmt> (__loop_cond));
+
+    /* Start of the condition part. */
+    add_block(__loop_cond);
+
+    auto *__cond = top->create_temporary({ bool_type::ptr() }, "cmp");
+    top_block->push_back(IRpool::allocate <compare_stmt> (
+        __cond, __iter, IRpool::__null__, compare_stmt::NE));
+    end_block(IRpool::allocate <branch_stmt> (__cond, _Blk_2 { __loop_body, __loop_exit }));
+
+    /* Starting of body block. */
+    add_block(__loop_body);
+
+    visitNewArray(--__type, std::move(__args));
+
+    /* Sub the pointer. */
+    top_block->push_back(IRpool::allocate <get_stmt> (__temp, __iter, IRpool::__neg1__));
+    top_block->push_back(IRpool::allocate <store_stmt> (get_value(), __temp));
+
+    end_block(IRpool::allocate <jump_stmt> (__loop_cond));
+
+    /* Exit of the block. */
+    add_block(__loop_exit);
+    set_value(__data);
 }
 
 } // namespace dark::IR
