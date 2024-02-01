@@ -11,6 +11,8 @@ struct compare_stmt final : statement {
         EQ, NE, LT, LE, GT, GE
     } op;
 
+    explicit compare_stmt(temporary *, definition *, definition *, compare_op);
+
     void accept(IRbase *v)  override { v->visitCompare(this); }
     std::string data()      const override;
     temporary *get_def()    const override;
@@ -25,6 +27,8 @@ struct binary_stmt final : statement {
         ADD, SUB, MUL, DIV, MOD, SHL, SHR, AND, OR, XOR
     } op;
 
+    explicit binary_stmt(temporary *, definition *, definition *, binary_op);
+
     void accept(IRbase *v)  override { v->visitBinary(this); }
     std::string data()      const override;
     temporary *get_def()    const override;
@@ -33,6 +37,8 @@ struct binary_stmt final : statement {
 
 struct jump_stmt final : flow_statement {
     block *dest;    // Next block
+
+    explicit jump_stmt(block *);
 
     void accept(IRbase *v)  override { v->visitJump(this); }
     std::string data()      const override;
@@ -43,6 +49,8 @@ struct jump_stmt final : flow_statement {
 struct branch_stmt final : flow_statement {
     definition *cond;   // Condition
     block *branch[2];   // br[0] false, br[1] true
+
+    explicit branch_stmt(definition *, block *[2]);
 
     void accept(IRbase *v)  override { v->visitBranch(this); }
     std::string data()      const override;
@@ -55,6 +63,8 @@ struct call_stmt final : statement {
     function  *func {};     // Function to call.
     std::vector <definition *> args;    // Arguments
 
+    explicit call_stmt(temporary *, function *);
+
     void accept(IRbase *v)  override { v->visitCall(this); }
     std::string data()      const override;
     temporary *get_def()    const override;
@@ -65,6 +75,8 @@ struct load_stmt final : memory_statement {
     temporary   *dest;    // Loaded value
     definition  *addr;    // Source address
 
+    explicit load_stmt(temporary *, non_literal *);
+
     void accept(IRbase *v)  override { v->visitLoad(this); }
     std::string data()      const override;
     temporary *get_def()    const override;
@@ -72,8 +84,10 @@ struct load_stmt final : memory_statement {
 };
 
 struct store_stmt final : memory_statement {
-    definition  *addr;    // Destination address
     definition  *src_;    // Stored value
+    definition  *addr;    // Destination address
+
+    explicit store_stmt(definition *, non_literal *);
 
     void accept(IRbase *v)  override { v->visitStore(this); }
     std::string data()      const override;
@@ -85,6 +99,8 @@ struct return_stmt final : flow_statement {
     definition *retval {};  // Return value.
     function   *func {};    // Function to end.
 
+    explicit return_stmt(definition *, function *);
+
     void accept(IRbase *v)  override { v->visitReturn(this); }
     std::string data()      const override;
     temporary *get_def()    const override;
@@ -94,7 +110,9 @@ struct return_stmt final : flow_statement {
 struct alloca_stmt final : statement {
     local_variable *dest;   // Allocated variable
 
-    void accept(IRbase *v)  override { v->visitAlloca(this); }
+    explicit alloca_stmt(local_variable *);
+
+    void accept(IRbase *)   override { runtime_assert(false, "No allca visitor!"); }
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
@@ -109,6 +127,8 @@ struct get_stmt final : statement {
     definition *index   {};     // Index of the array
     std::size_t member  {NPOS}; // Member index
 
+    explicit get_stmt(temporary *, definition *, definition *, std::size_t = NPOS);
+
     void accept(IRbase *v)  override { v->visitGet(this); }
     std::string data()      const override;
     temporary *get_def()    const override;
@@ -116,6 +136,7 @@ struct get_stmt final : statement {
 };
 
 struct unreachable_stmt final : flow_statement {
+    explicit unreachable_stmt() = default;
     void accept(IRbase *v)  override { v->visitUnreachable(this); }
     std::string data()      const override;
     temporary *get_def()    const override;
@@ -130,8 +151,11 @@ struct phi_stmt final : statement {
     };
     using _Phi_List = std::vector <entry>;
 
-    temporary *dest;   // Result
+    temporary *dest;    // Result
     _Phi_List  list;    // Phi entries
+
+    explicit phi_stmt(temporary *);
+    explicit phi_stmt(temporary *, _Phi_List);
 
     void accept(IRbase *v)  override { v->visitPhi(this); }
     std::string data()      const override;

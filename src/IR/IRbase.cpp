@@ -1,4 +1,5 @@
 #include "IRbase.h"
+#include "IRnode.h"
 #include <deque>
 #include <unordered_map>
 
@@ -72,9 +73,15 @@ typeinfo pointer_constant::get_value_type() const {
     return var ? ++var->type : typeinfo {null_type::ptr()};
 }
 
+} // namespace dark::IR
+
 /* IR pool related part here. */
+namespace dark::IR {
 
 void IRpool::init_pool() {
+    static bool __flag {};  // Avoid init twice.
+    if (__flag) return;
+    __flag      = true;
     __null__    = create_pointer(nullptr);
     __zero__    = create_integer(0);
     __pos1__    = create_integer(1);
@@ -137,10 +144,33 @@ global_variable *IRpool::create_string(const std::string &__name) {
     __var->name = std::format("@.str.{}", str_pool.size());
     __var->type = { string_type::ptr(), 1 };
 
-    __var->const_init = &__strings.emplace_back(__name);
+    __var->init = &__strings.emplace_back(__name);
+    __var->is_constant = true;
     return __var;
 }
 
+namespace detail {
+
+inline static std::deque <block> blocks {};
+
+} // namespace detail
+
+template <>
+unreachable_stmt *IRpool::allocate <unreachable_stmt> () {
+    static unreachable_stmt __instance {};
+    return &__instance;
+}
+template <>
+block *IRpool::allocate <block> () {
+    static std::size_t __cnt {};
+    auto *__blk = &detail::blocks.emplace_back();
+    __blk->name = std::format(".bb{}", __cnt++);
+    return __blk;
+}
+
+/**
+ * @return Data of a custom_type.
+ */
 std::string custom_type::data() const {
     std::vector <std::string> __ret;
     __ret.emplace_back(std::format("{} = type {{ ", name()));

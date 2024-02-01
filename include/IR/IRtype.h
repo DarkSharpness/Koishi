@@ -17,8 +17,8 @@ struct class_type {
 struct typeinfo {
     using ssize_t = std::make_signed_t <std::size_t>;
 
-    const class_type* base; // Base type.
-    ssize_t     dimensions; // Pointer dimensions.
+    const class_type* base;     // Base type.
+    ssize_t     dimensions {};  // Pointer dimensions.
 
     std::string_view name() const {
         if (dimensions > 0) return "ptr";
@@ -119,6 +119,14 @@ struct custom_type final : class_type {
     std::vector <std::string>   member;
 
     custom_type(std::string __name) : class_name(std::move(__name)) {}
+
+    /* Return the index of a certain member. */
+    std::size_t get_index(std::string_view __name) const {
+        for (std::size_t i = 0; i < member.size(); ++i)
+            if (member[i] == __name) return i;
+        runtime_assert(false, "No such member");
+        __builtin_unreachable();
+    }
 
     bool is_trivial()   const override { return false; }
     std::size_t size()  const override { return layout.size() * kMxPtrSize; }

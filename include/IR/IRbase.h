@@ -42,9 +42,8 @@ struct variable : non_literal {};
 struct argument         final  : variable {};
 struct local_variable   final  : variable {};
 struct global_variable  final  : variable {
-    /* If constantly initialized, this is the variable's value. */
-    const literal *const_init {};
-    bool is_const() const noexcept { return const_init != nullptr; }
+    const literal *init {}; // Initial value of the global variable.
+    bool    is_constant {}; // If true, the global variable's value is a constant.
 };
 
 /* Literal constants. */
@@ -160,12 +159,60 @@ struct IRbase {
     virtual void visitLoad(load_stmt *) = 0;
     virtual void visitStore(store_stmt *) = 0;
     virtual void visitReturn(return_stmt *) = 0;
-    virtual void visitAlloca(alloca_stmt *) = 0;
     virtual void visitGet(get_stmt *) = 0;
     virtual void visitPhi(phi_stmt *) = 0;
     virtual void visitUnreachable(unreachable_stmt *) = 0;
 
     virtual ~IRbase() = default;
+};
+
+/**
+ * @brief A block consists of:
+ * 1. Phi functions
+ * 2. Statements
+ * 3. Control flow statement
+ * 
+ * Hidden impl is intended to provide future
+ * support for loop or other info.
+ */
+struct block final : hidden_impl {
+    std::vector <phi_stmt *> phi;   // All phi functions
+    flow_statement *flow {};        // Control flow statement
+    std::string     name;           // Label name
+
+    std::vector <statement*>    data;   // All normal statements
+    std::vector  <block *>      prev;   // Predecessor blocks
+    fixed_vector <block *, 2>   next;   // Successor blocks
+
+    void push_phi(phi_stmt *);          // Push back a phi function
+    void push_back(statement *);        // Push back a statement
+    void print(std::ostream &) const;   // Print the block data
+    bool is_unreachable() const;        // Is this block unreachable?
+};
+
+struct function final : hidden_impl {
+  private:
+    std::size_t loop_count {};  // Count of for loops
+    std::size_t cond_count {};  // Count of branches
+    std::unordered_map <std::string, std::size_t> temp_count; // Count of temporaries
+
+  public:
+    typeinfo    type;       // Return type
+    std::string name;       // Function name
+    std::vector  <block  *>  data;   // All blocks
+    std::vector <argument *> args;   // Arguments
+    std::vector <local_variable *> locals; // Local variables
+
+    bool is_builtin {};
+    bool has_input  {};
+    bool has_output {};
+
+    temporary *create_temporary(typeinfo, const std::string &);
+
+    void push_back(block *);
+    // void push_back(statement *);     // To avoid misusage.
+    void print(std::ostream &) const;   // Print the function data
+    bool is_unreachable() const;        // Is this function unreachable?
 };
 
 /* A global memory pool for IR. */
@@ -175,6 +222,7 @@ struct IRpool {
     inline static central_allocator <node>        pool1 {};
     inline static central_allocator <non_literal> pool2 {};
     using _Function_Ptr = function *;
+
   public:
     inline static pointer_constant *__null__    {};
     inline static integer_constant *__zero__    {};
@@ -191,11 +239,26 @@ struct IRpool {
     /* Initialize the pool. */
     static void init_pool();
     /* Allocate one node. */
-    template <typename _Tp>
-    static _Tp *allocate_node() { return pool1.allocate <_Tp> (); }
+    template <typename _Tp, typename... _Args>
+    requires 
+        (!std::same_as <unreachable_stmt, _Tp>
+    &&  std::constructible_from <_Tp, _Args...>
+    &&  std::derived_from <_Tp, statement>)
+    static _Tp *allocate(_Args &&...__args) {
+        return pool1.allocate <_Tp> (std::forward <_Args> (__args)...);
+    }
+
     /* Allocate one non_literal. */
-    template <typename _Tp>
-    static _Tp *allocate_def()  { return pool2.allocate <_Tp> (); }
+    template <std::derived_from <non_literal> _Tp>
+    static _Tp *allocate() { return pool2.allocate <_Tp> (); }
+
+    /* Allocate unreachable. */
+    template <std::same_as <unreachable_stmt> _Tp>
+    static unreachable_stmt *allocate();
+
+    /* Allocate one block. */
+    template <std::same_as <block> _Tp>
+    static block *allocate();
 
     static integer_constant *create_integer(int);
     static boolean_constant *create_boolean(bool);
@@ -204,51 +267,5 @@ struct IRpool {
     static undefined *create_undefined(typeinfo, int = 0);
 };
 
-/**
- * @brief A block consists of:
- * 1. Phi functions
- * 2. Statements
- * 3. Control flow statement
- * 
- * Hidden impl is intended to provide future
- * support for loop or other info.
- */
-struct block final : hidden_impl {
-    std::vector <phi_stmt *> phi;   // All phi functions
-    flow_statement *flow {};        // Control flow statement
-    std::string     name;           // Label name
-    
-    std::vector <statement*>    data;   // All normal statements
-    std::vector  <block *>      prev;   // Predecessor blocks
-    fixed_vector <block *, 2>   next;   // Successor blocks
-
-    void push_back(statement *);
-    void print(std::ostream &) const;   // Print the block data
-    bool is_unreachable() const;        // Is this block unreachable?
-};
-
-struct function final : hidden_impl {
-  private:
-    std::size_t loop_count {};  // Count of for loops
-    std::size_t cond_count {};  // Count of branches
-    std::unordered_map <std::string, std::size_t> temp_count; // Count of temporaries
-
-  public:
-    std::string name;       // Function name
-    typeinfo    type;       // Return type
-    std::vector  <block  *>     data;   // All blocks
-    std::vector <argument *>    args;   // Arguments
-
-    bool is_builtin {};
-    bool has_input  {};
-    bool has_output {};
-
-    temporary *create_temporary(typeinfo, const std::string &);
-
-    void push_back(block *);
-    void push_back(statement *);
-    void print(std::ostream &) const;   // Print the function data
-    bool is_unreachable() const;        // Is this function unreachable?
-};
 
 } // namespace dark::IR
