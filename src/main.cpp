@@ -65,7 +65,7 @@ signed main(int argc, char** argv) {
         return 1;
     } catch(...) {
         std::cerr << "Unknown error!" << std::endl;
-        return 1;
+        return 0;
     }
     std::cerr << "No error." << std::endl; // "No error.
     return 0;

@@ -591,26 +591,36 @@ void IRbuilder::visitTernary(AST::ternary_expr *ctx) {
     end_block(get_branch());
     branch_stack.pop_back();
 
+    const bool __is_void = __is_void_type(transform_type(ctx->type));
+    /* Special case: ternery with void. */
+    auto __safe_get_value = [=,this]() -> definition * {
+        return __is_void ? nullptr : get_value();
+    };
+
     auto *__branch_end = IRpool::allocate <block> ();
 
     add_block(__branch_true_);
     visit(ctx->lval);
-    auto *__lval = get_value();
+    auto *__lval = __safe_get_value();
     end_block(IRpool::allocate <jump_stmt> (__branch_end));
 
     add_block(__branch_false);
     visit(ctx->rval);
-    auto *__rval = get_value();
+    auto *__rval = __safe_get_value();
     end_block(IRpool::allocate <jump_stmt> (__branch_end));
 
     add_block(__branch_end);
-    auto *__tmp = top->create_temporary(__lval->get_point_type(), "phi");
-    top_block->push_phi(IRpool::allocate <phi_stmt> (
-        __tmp, _Phi_List {
-        { __branch_false, __rval },
-        { __branch_true_, __lval },
-    }));
-    return set_value(__tmp);
+    if (!__is_void) {
+        auto *__tmp = top->create_temporary(__lval->get_value_type(), "phi");
+        top_block->push_phi(IRpool::allocate <phi_stmt> (
+            __tmp, _Phi_List {
+            { __branch_false, __rval },
+            { __branch_true_, __lval },
+        }));
+        return set_value(__tmp);
+    } else {
+        return set_invalid();
+    }
 }
 
 void IRbuilder::visitMember(AST::member_expr *ctx) {
