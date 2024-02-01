@@ -52,7 +52,7 @@ void compiler_work() {
     Hastin.reset();
     Wankupi.reset();
     /* Debug message */
-    std::cerr << Conless->IRtree();
+    std::cout << Conless->IRtree();
 }
 
 signed main(int argc, char** argv) {

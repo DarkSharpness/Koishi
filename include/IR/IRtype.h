@@ -58,7 +58,7 @@ struct int_type final : class_type {
     static int_type *ptr() { static int_type __type; return &__type; }
     bool is_trivial()   const override { return true; }
     std::size_t size()  const override { return 4; }
-    std::string_view name()  const override { return "int"; }
+    std::string_view name()  const override { return "i32"; }
 };
 
 /* Boolean type. */
@@ -69,7 +69,7 @@ struct bool_type final : class_type {
     static bool_type *ptr() { static bool_type __type; return &__type; }
     bool is_trivial()   const override { return true; }
     std::size_t size()  const override { return 1; }
-    std::string_view name()  const override { return "bool"; }
+    std::string_view name()  const override { return "i1"; }
 };
 
 /* Char array type. */
@@ -94,7 +94,10 @@ struct string_type final : class_type {
     static string_type *ptr() { static string_type __type; return &__type; }
     bool is_trivial()   const override { return false; }
     std::size_t size()  const override { return kMxPtrSize; }
-    std::string_view name()  const override { return "string"; }
+    std::string_view name()  const override {
+        runtime_assert(false, "Cannot evaluate name of string type");
+        __builtin_unreachable();
+    }
 };
 
 /* Null type. */

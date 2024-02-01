@@ -120,7 +120,8 @@ std::string store_stmt::data() const {
         "Invalid store operation type"
     );
     return std::format(
-        "store {}, ptr {}\n",
+        "store {} {}, ptr {}\n",
+        src_->get_value_type().name(),
         src_->data(),
         addr->data()
     );
@@ -261,18 +262,23 @@ void function::push_back(block *__blk) { data.push_back(__blk); }
 void function::print(std::ostream &os) const {
     std::string __list = make_arglist(args);
     os << std::format(
-        "define {} @{}() {{\n",
-        type.name(), name 
+        "define {} @{}({}) {{\n",
+        type.name(), name, __list 
     );
+
     /* Print all allocas. */
     alloca_stmt alloca { nullptr };
     for (auto *__p : locals) {
         alloca.dest = __p;
         os << "    " << alloca.data();
     }
+    /* Add a virtual jump to become a valid LLVM IR. */
+    if (alloca.dest != nullptr)
+        os << "    br label %" << data.front()->name << "\n";
+
     /* Then print all blocks. */
     for (auto *__p : data) __p->print(os);
-    os << "}\n";
+    os << "}\n\n";
 }
 
 bool function::is_unreachable() const { return data.empty(); }
