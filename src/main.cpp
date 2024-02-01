@@ -33,37 +33,40 @@ std::unique_ptr <dark::AST::ASTchecker> check_input(dark::AST::ASTbuilder *ptr) 
     return std::make_unique <dark::AST::ASTchecker> (ptr);
 }
 
+std::unique_ptr <dark::IR::IRbuilder> build_IR(
+    dark::AST::ASTbuilder *builder,
+    dark::AST::ASTchecker *checker) {
+    return std::make_unique <dark::IR::IRbuilder> (builder, checker->global);
+}
+
 void compiler_work() {
     /* From stdin to AST. */
     auto Wankupi    = parse_input(std::cin);
     /* AST Level sema check. Build up scope. */
     auto Hastin     = check_input(Wankupi.get());
-
-    std::cerr << Wankupi->ASTtree();
-
+    /* Debug message */
+    // std::cerr << Wankupi->ASTtree();
     /* From AST to IR. */
-
-
+    auto Conless    = build_IR(Wankupi.get(), Hastin.get());
     /* Release resoures of AST. */
     Hastin.reset();
     Wankupi.reset();
-
-
+    /* Debug message */
+    // std::cerr << Conless->IRtree();
 }
 
-
 signed main(int argc, char** argv) {
-    // try {
+    try {
         compiler_work();
-    // } catch(const std::exception& e) {
-    //     /* If non-dark-error, speak out what. */
-    //     if (!dynamic_cast <const dark::error *> (&e))
-    //         std::cerr << "Error: " << e.what() << std::endl;
-    //     return 1;
-    // } catch(...) {
-    //     std::cerr << "Unknown error!" << std::endl;
-    //     return 1;
-    // }
+    } catch(const std::exception& e) {
+        /* If non-dark-error, speak out what. */
+        if (!dynamic_cast <const dark::error *> (&e))
+            dark::error { e.what() };
+        return 1;
+    } catch(...) {
+        std::cerr << "Unknown error!" << std::endl;
+        return 1;
+    }
     std::cerr << "No error." << std::endl; // "No error.
     return 0;
 }
