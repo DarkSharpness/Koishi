@@ -144,9 +144,13 @@ void IRbuilder::set_invalid() { is_ready = false; }
 void IRbuilder::add_block(block *__blk) { top->data.push_back(top_block = __blk); }
 /* End a block with a given flow. */
 void IRbuilder::end_block(flow_statement *__stmt) {
-    runtime_assert(top_block->flow == nullptr, "Block has been ended.");
-    top_block->flow = __stmt;
-    top_block = nullptr;
+    if (top_block != &dummy_block) {
+        runtime_assert(top_block->flow == nullptr, "No flow is available.");        
+        top_block->flow = __stmt;
+        top_block = &dummy_block;
+    } else { // Dummy block data is useless.
+        dummy_block.data.clear();
+    }
 }
 
 
@@ -345,7 +349,6 @@ void IRbuilder::create_builtin(AST::ASTbuilder *ctx) {
 } // namespace dark::IR
 
 
-/* Visitors. */
 namespace dark::IR {
 
 void IRbuilder::visitBracket(AST::bracket_expr *ctx) { return visit(ctx->expr); }
@@ -695,7 +698,7 @@ void IRbuilder::visitAtomic(AST::atomic_expr *ctx) {
     }
 }
 
-
+/* Literal constants. */
 void IRbuilder::visitLiteral(AST::literal_expr *ctx) {
     switch (ctx->sort) {
         case ctx->NUMBER: return set_value(IRpool::create_integer(std::stoi(ctx->name)));
@@ -707,12 +710,114 @@ void IRbuilder::visitLiteral(AST::literal_expr *ctx) {
     }
 }
 
-void IRbuilder::visitFor(AST::for_stmt *) {}
-void IRbuilder::visitWhile(AST::while_stmt *) {}
-void IRbuilder::visitFlow(AST::flow_stmt *) {}
-void IRbuilder::visitBlock(AST::block_stmt *) {}
-void IRbuilder::visitBranch(AST::branch_stmt *) {}
-void IRbuilder::visitSimple(AST::simple_stmt *) {}
+/**
+ * @brief We should transfrom:
+ *  "for (init; cond; step) body"
+ * into:
+ *  "init; if (cond) do { body; step; } while (cond)"
+ */
+void IRbuilder::visitFor(AST::for_stmt *ctx) {
+    if (ctx->init) visit(ctx->init), set_invalid();
+
+    auto *__loop_body   = IRpool::allocate <block> ();
+    auto *__loop_step   = IRpool::allocate <block> ();
+    auto *__loop_end    = IRpool::allocate <block> ();
+
+    /* Capturing __loop_end, __loop_body, ctx, this. */
+    auto __visit_cond = [=, this]() {
+        if (ctx->cond) {
+            branch_stack.push_back({__loop_end, __loop_body});
+
+            visit(ctx->cond);
+
+            end_block(get_branch());
+            branch_stack.pop_back();
+        } else { /* Directly jump to loop body. */
+            end_block(IRpool::allocate <jump_stmt> (__loop_body));
+        }
+    };
+
+    __visit_cond();
+
+    add_block(__loop_body);
+    loop_stack.push_back({__loop_step, __loop_end});
+    visit(ctx->body);
+    loop_stack.pop_back();
+
+    end_block(IRpool::allocate <jump_stmt> (__loop_step));
+    add_block(__loop_step);
+
+    if (ctx->step) visit(ctx->step), set_invalid();
+    __visit_cond();
+
+    return add_block(__loop_end); // End of the loop.
+}
+
+/**
+ * @brief We should transfrom:
+ *  "while (cond) body"
+ * into:
+ *  "if (cond) do { body; } while (cond)"
+ */
+void IRbuilder::visitWhile(AST::while_stmt *ctx) {
+    AST::for_stmt __ctx;
+    __ctx.init = {};
+    __ctx.cond = ctx->cond;
+    __ctx.step = {};
+    __ctx.body = ctx->body;
+    return visitFor(&__ctx);
+}
+
+void IRbuilder::visitFlow(AST::flow_stmt *ctx) {
+    if (ctx->sort != ctx->RETURN) {    // Loop case
+        if (ctx->sort == ctx->CONTINUE)
+            return end_block(IRpool::allocate <jump_stmt> (loop_stack.back().next));
+        else    // Break case
+            return end_block(IRpool::allocate <jump_stmt> (loop_stack.back().exit));
+    }
+
+    /* Return statement. */
+    if (ctx->expr) {
+        visit(ctx->expr);
+        if (!__is_void_type(transform_type(ctx->expr->type)))
+            return end_block(IRpool::allocate <return_stmt> (get_value(), top));
+    }
+
+    /* No return value. */
+    return end_block(IRpool::allocate <return_stmt> (nullptr, top));
+}
+
+void IRbuilder::visitBlock(AST::block_stmt *ctx) {
+    for (auto *__p : ctx->stmt) visit(__p), set_invalid();
+}
+
+void IRbuilder::visitSimple(AST::simple_stmt *ctx) {
+    for (auto *__p : ctx->expr) visit(__p), set_invalid();
+}
+
+void IRbuilder::visitBranch(AST::branch_stmt *ctx) {
+    auto *__branch_exit = IRpool::allocate <block> ();
+    for (const auto &[__cond, __body] : ctx->branches) {
+        auto *__branch_body = IRpool::allocate <block> ();
+        auto *__branch_fail = IRpool::allocate <block> ();
+
+        branch_stack.push_back({__branch_fail, __branch_body});
+        visit(__cond);
+        end_block(get_branch());
+        branch_stack.pop_back();
+
+        add_block(__branch_body);
+        visit(__body);
+        end_block(IRpool::allocate <jump_stmt> (__branch_exit));
+
+        add_block(__branch_fail);
+    }
+
+    if (ctx->else_body) visit(ctx->else_body);
+
+    end_block(IRpool::allocate <jump_stmt> (__branch_exit));
+    add_block(__branch_exit);
+}
 
 void IRbuilder::visitVariableDef(AST::variable_def *ctx) {
     if (top == nullptr) { // Global variable.

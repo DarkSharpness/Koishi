@@ -144,7 +144,8 @@ struct unreachable_stmt final : flow_statement {
 };
 
 /* Phi function. Which is not a "real" statement. */
-struct phi_stmt final : statement {
+struct phi_stmt final : private statement {
+    friend class central_allocator <statement>;
     struct entry {
         block      *from;
         definition *init;

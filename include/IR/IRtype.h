@@ -72,7 +72,6 @@ struct bool_type final : class_type {
     std::string_view name()  const override { return "bool"; }
 };
 
-
 /* Char array type. */
 struct cstring_type final : class_type {
   private:
@@ -142,6 +141,9 @@ inline bool __is_int_type(const typeinfo &__type) {
 }
 inline bool __is_bool_type(const typeinfo &__type) {
     return __type.dimensions == 0 && __type.base == bool_type::ptr();
+}
+inline bool __is_void_type(const typeinfo &__type) {
+    return __type.dimensions == 0 && __type.base == void_type::ptr();
 }
 
 inline bool operator == (const typeinfo &lhs, const typeinfo &rhs) {

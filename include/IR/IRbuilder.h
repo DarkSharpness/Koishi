@@ -21,7 +21,13 @@ struct IRbuilder : AST::ASTbase {
         void negate() { std::swap(branch[0], branch[1]); }
     };
 
+    struct loop_setting {
+        block *next;    // For continue statement.
+        block *exit;    // For break statement.
+    };
+
     std::deque <branch_setting> branch_stack;
+    std::deque <loop_setting>   loop_stack;
 
     definition *get_value();
     non_literal *get_address();
@@ -55,6 +61,11 @@ struct IRbuilder : AST::ASTbase {
      * whether it is a local variable or a member variable.
     */
     inline static local_variable member_variable {};
+    /**
+     * When we are inserting unreachable code, we need to insert a dummy block
+     * to avoid the situation that top_block is nullptr.
+    */
+    inline static block dummy_block {};
 
   public:
     IRbuilder(AST::ASTbuilder *, AST::scope *);

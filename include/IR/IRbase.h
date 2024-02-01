@@ -145,7 +145,10 @@ struct phi_stmt;
 struct unreachable_stmt;
 
 using  statement = node;
-struct flow_statement : statement {};
+struct flow_statement : protected statement {
+    /* Prevent implicit conversion to node. */
+    friend class central_allocator <node>;
+};  
 struct memory_statement : statement {};
 
 struct IRbase {
@@ -243,7 +246,7 @@ struct IRpool {
     requires 
         (!std::same_as <unreachable_stmt, _Tp>
     &&  std::constructible_from <_Tp, _Args...>
-    &&  std::derived_from <_Tp, statement>)
+    &&  std::is_base_of_v <statement, _Tp>)
     static _Tp *allocate(_Args &&...__args) {
         return pool1.allocate <_Tp> (std::forward <_Args> (__args)...);
     }
