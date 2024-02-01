@@ -18,7 +18,7 @@ static bool is_AST_string(AST::typeinfo __tp) { return __tp.base->name == "strin
 static void print_global(const global_variable &__var, std::ostream &__ss) {
     __ss << __var.data();
     if (auto *__lit = __var.init)
-        __ss << " = " << __lit->IRtype() << ' ' << __lit->data();
+        __ss << " = " << __lit->IRtype() << ' ' << __lit->data() << '\n';
 }
 
 /**
@@ -177,6 +177,7 @@ std::string IRbuilder::IRtree() const {
         print_global(__var, ss);
     ss << '\n';
 
+    IRpool::print_builtin(ss);
     return ss.str();
 }
 

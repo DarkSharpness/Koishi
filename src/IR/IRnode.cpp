@@ -311,6 +311,19 @@ static function __builtin_function[17] {};
 */
 function *const IRpool::builtin_function = detail::__builtin_function;
 
+void IRpool::print_builtin(std::ostream &os) {
+    for (const auto &__func : detail::__builtin_function) {
+        std::string __list = make_arglist(__func.args);
+        os << std::format(
+            "declare {} @{}({})\n",
+            __func.type.name(), __func.name, __list 
+        );
+    }
+
+
+}
+
+
 
 } // namespace dark::IR
 

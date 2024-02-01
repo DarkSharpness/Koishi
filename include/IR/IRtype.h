@@ -108,7 +108,7 @@ struct null_type final : class_type {
     static null_type *ptr() { static null_type __type; return &__type; }
     bool is_trivial()   const override { return true; }
     std::size_t size()  const override { return kMxPtrSize; }
-    std::string_view name()  const override { return "null"; }
+    std::string_view name()  const override { return "ptr"; }
 };
 
 /* User-defined classes. */

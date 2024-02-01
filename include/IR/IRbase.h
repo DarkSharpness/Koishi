@@ -275,6 +275,8 @@ struct IRpool {
     static pointer_constant *create_pointer(const global_variable *);
     static global_variable  *create_string(const std::string &);
     static undefined *create_undefined(typeinfo, int = 0);
+
+    static void print_builtin(std::ostream &);
 };
 
 
