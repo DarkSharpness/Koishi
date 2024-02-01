@@ -408,7 +408,7 @@ void IRbuilder::visitUnary(AST::unary_expr *ctx) {
 
         top_block->push_back(IRpool::allocate <store_stmt> (__tmp, __ptr));
 
-        if (ctx->op.str[2]) set_value(__tmp);       // Suffix ++ or --
+        if (ctx->op.str[2]) set_value(__val);       // Suffix ++ or --
         else                set_address(__ptr);     // Prefix ++ or --
     } else {
         auto __op = ctx->op.str[0];
