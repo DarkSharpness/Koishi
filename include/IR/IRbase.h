@@ -148,7 +148,14 @@ using  statement = node;
 struct flow_statement : protected statement {
     /* Prevent implicit conversion to node. */
     friend class central_allocator <node>;
-};  
+    void accept(IRbase * __v) override = 0;
+    /* Return the string form IR. */
+    std::string data()  const override = 0;
+    /* Return the temporary this statment defines. */
+    temporary *get_def() const override = 0;
+    /* Return all the usages of the node. */
+    _Def_List  get_use() const override = 0;
+};
 struct memory_statement : statement {};
 
 struct IRbase {

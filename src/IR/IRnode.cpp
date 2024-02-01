@@ -91,9 +91,9 @@ std::string branch_stmt::data() const {
 std::string call_stmt::data() const {
     std::string __list = make_arglist(args);
     std::string __prefix; // Prefix.
-    if (dest) __prefix = std::format("{} =", dest->data());
+    if (dest) __prefix = std::format("{} = ", dest->data());
     return std::format(
-        "{} call {} @{}({})\n",
+        "{}call {} @{}({})\n",
         __prefix,
         func->type.name(),
         func->name,
@@ -127,9 +127,9 @@ std::string store_stmt::data() const {
 }
 
 std::string return_stmt::data() const {
-    runtime_assert(retval && retval->get_value_type() == func->type,
-        "Invalid return type");
-    runtime_assert(!retval && func->type == typeinfo{ void_type::ptr() },
+    runtime_assert(
+        ( retval && retval->get_value_type() == func->type)
+    ||  (!retval && func->type == typeinfo{ void_type::ptr()}),
         "Invalid return type");
     if (!retval) return "ret void\n";
     return std::format(
@@ -237,9 +237,10 @@ void block::push_phi(phi_stmt *__phi) { phi.push_back(__phi); }
 void block::push_back(statement *__stmt) { data.push_back(__stmt); }
 void block::print(std::ostream &os) const {
     os << name << ":\n";
-    for (auto *__p : phi)   os << __p->data();
-    for (auto *__p : data)  os << __p->data();
-    os << '\n';
+    for (auto *__p : phi)   os << "    " << __p->data();
+    for (auto *__p : data)  os << "    " << __p->data();
+    runtime_assert(flow, "No terminator in block!");
+    os << "    " << flow->data();
 }
 
 bool block::is_unreachable() const {
@@ -270,10 +271,7 @@ void function::print(std::ostream &os) const {
         os << "    " << alloca.data();
     }
     /* Then print all blocks. */
-    for (auto *__p : data) {
-        os << "    " ;
-        __p->print(os);
-    }
+    for (auto *__p : data) __p->print(os);
     os << "}\n";
 }
 

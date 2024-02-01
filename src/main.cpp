@@ -52,7 +52,7 @@ void compiler_work() {
     Hastin.reset();
     Wankupi.reset();
     /* Debug message */
-    // std::cerr << Conless->IRtree();
+    std::cerr << Conless->IRtree();
 }
 
 signed main(int argc, char** argv) {
@@ -65,8 +65,8 @@ signed main(int argc, char** argv) {
         return 1;
     } catch(...) {
         std::cerr << "Unknown error!" << std::endl;
-        return 0;
+        return 1;
     }
-    std::cerr << "No error." << std::endl; // "No error.
+    // std::cerr << "No error." << std::endl; // "No error.
     return 0;
 }
