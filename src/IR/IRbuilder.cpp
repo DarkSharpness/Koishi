@@ -359,7 +359,7 @@ void IRbuilder::visitSubscript(AST::subscript_expr *ctx) {
         auto *__ptr = safe_cast <non_literal *> (get_value());
         visit(__p);
         auto *__idx = get_value();  // Index
-        auto *__tmp = top->create_temporary(__ptr->get_point_type(), "idx");
+        auto *__tmp = top->create_temporary(__ptr->get_value_type(), "idx");
         auto *__get = IRpool::allocate <get_stmt> (__tmp, __ptr, __idx);
         top_block->push_back(__get);
         set_address(__tmp);
@@ -649,7 +649,7 @@ void IRbuilder::visitConstruct(AST::construct_expr *ctx) {
      */
     auto *__class = safe_cast <const custom_type *> (__type.base);
     auto *__func = IRpool::builtin_function + 14;
-    auto *__dest = top->create_temporary(__func->type, "new");
+    auto *__dest = top->create_temporary(__type, "new");
     auto *__call = IRpool::allocate <call_stmt> (__dest, __func);
     __call->args = { IRpool::create_integer(__class->size()) };
     top_block->push_back(__call);
