@@ -896,7 +896,7 @@ void IRbuilder::visitFunctionDef(AST::function_def *ctx) {
 void IRbuilder::visitClassDef(AST::class_def *ctx) {
     for (auto *__p : ctx->member)
         if (auto *__func = dynamic_cast <AST::function_def *> (__p))
-            return visitFunctionDef(__func);
+            visitFunctionDef(__func);
 }
 
 void IRbuilder::visitGlobalVariable(AST::variable *ctx, AST::literal_expr *__lit) {
