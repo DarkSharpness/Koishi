@@ -1,4 +1,4 @@
-# About DarkSharpness Mx Compiler
+# About DarkSharpness Mx Compiler Project
 
 ## Frontend
 
@@ -41,3 +41,5 @@ The second part is what we will focus on. We plan to do the following optimizati
 15. Specialized code generation based on Mx (on every part).
 
 In our last project, we have implemented 1,3,4,5,6,7,10,11,13,14. We also partly implemented 12 (which effectively converts some malloc to alloca), and tried to identify a general pattern of loop (but failed). We will try to implement the rest of them in this project.
+
+What's more, the instruction selection in our last project is not optimal. We will try to improve it in this project.
