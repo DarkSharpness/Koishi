@@ -301,7 +301,7 @@ void IRbuilder::create_function(AST::function_def *ctx, bool __is_member) {
         top->locals.push_back(__var);
         variable_map[__old] = __var;
 
-        __entry->push_back(IRpool::allocate <store_stmt> (__var, __arg));
+        __entry->push_back(IRpool::allocate <store_stmt> (__arg, __var));
     }
 }
 
