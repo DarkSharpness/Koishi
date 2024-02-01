@@ -602,12 +602,14 @@ void IRbuilder::visitTernary(AST::ternary_expr *ctx) {
 
     add_block(__branch_true_);
     visit(ctx->lval);
-    auto *__lval = __safe_get_value();
+    __branch_true_  = top_block;
+    auto *__lval    = __safe_get_value();
     end_block(IRpool::allocate <jump_stmt> (__branch_end));
 
     add_block(__branch_false);
     visit(ctx->rval);
-    auto *__rval = __safe_get_value();
+    __branch_false  = top_block;
+    auto *__rval    = __safe_get_value();
     end_block(IRpool::allocate <jump_stmt> (__branch_end));
 
     add_block(__branch_end);
@@ -962,13 +964,22 @@ void IRbuilder::visitNewArray(typeinfo __type, std::vector <definition *> __args
     auto *__iter = top->create_temporary(__type, "new.cur");
     auto *__temp = top->create_temporary(__type, "new.sub");
 
-    /* First, inserting phi to collect the value. */
+    auto *__loop_head = top_block;
+    end_block(IRpool::allocate <jump_stmt> (__loop_cond));
+
+    /* Starting of body block. */
+    add_block(__loop_body);
+    visitNewArray(--__type, std::move(__args));
+    /* Sub the pointer. */
+    top_block->push_back(IRpool::allocate <get_stmt> (__temp, __iter, IRpool::__neg1__));
+    top_block->push_back(IRpool::allocate <store_stmt> (get_value(), __temp));
+
+    /* Inserting phi to collect the value. */
     __loop_cond->push_phi(IRpool::allocate <phi_stmt> (
         __iter, _Phi_List {
-            { top_block  , __tail },
+            { __loop_head, __tail },
             { __loop_body, __temp }
     }));
-
     end_block(IRpool::allocate <jump_stmt> (__loop_cond));
 
     /* Start of the condition part. */
@@ -977,20 +988,10 @@ void IRbuilder::visitNewArray(typeinfo __type, std::vector <definition *> __args
     auto *__cond = top->create_temporary({ bool_type::ptr() }, "cmp");
     top_block->push_back(IRpool::allocate <compare_stmt> (
         __cond, __iter, IRpool::__null__, compare_stmt::NE));
+
     end_block(IRpool::allocate <branch_stmt> (__cond, _Blk_2 { __loop_body, __loop_exit }));
 
-    /* Starting of body block. */
-    add_block(__loop_body);
-
-    visitNewArray(--__type, std::move(__args));
-
-    /* Sub the pointer. */
-    top_block->push_back(IRpool::allocate <get_stmt> (__temp, __iter, IRpool::__neg1__));
-    top_block->push_back(IRpool::allocate <store_stmt> (get_value(), __temp));
-
-    end_block(IRpool::allocate <jump_stmt> (__loop_cond));
-
-    /* Exit of the block. */
+    /* Exit of the loop. */
     add_block(__loop_exit);
     set_value(__data);
 }
