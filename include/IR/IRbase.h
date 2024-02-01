@@ -277,6 +277,7 @@ struct IRpool {
     static undefined *create_undefined(typeinfo, int = 0);
 
     static void print_builtin(std::ostream &);
+    static void deallocate(block *);
 };
 
 

@@ -151,7 +151,8 @@ global_variable *IRpool::create_string(const std::string &__name) {
 
 namespace detail {
 
-inline static std::deque <block> blocks {};
+inline static std::deque    <block>     blocks {};
+inline static std::vector   <block *> block_stack {};
 
 } // namespace detail
 
@@ -162,10 +163,20 @@ unreachable_stmt *IRpool::allocate <unreachable_stmt> () {
 }
 template <>
 block *IRpool::allocate <block> () {
-    static std::size_t __cnt {};
-    auto *__blk = &detail::blocks.emplace_back();
-    __blk->name = std::format(".bb{}", __cnt++);
-    return __blk;
+    using namespace detail;
+    if (block_stack.size()) {
+        auto *__blk = block_stack.back();
+        block_stack.pop_back();
+        return __blk;
+    } else {
+        auto *__blk = &detail::blocks.emplace_back();
+        __blk->name = std::format(".bb{}", blocks.size());
+        return __blk;
+    }
+}
+void IRpool::deallocate(block *__blk) {
+    using namespace detail;
+    block_stack.push_back(__blk);
 }
 
 /**

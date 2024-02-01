@@ -186,7 +186,7 @@ std::string phi_stmt::data() const {
         );
         if (__first) __first = false;
         else __ret.push_back(", ");
-        __ret.push_back(std::format("[{}, %{}]", init->data(), from->name));
+        __ret.push_back(std::format("[ {} , %{} ]", init->data(), from->name));
     }
 
     __ret.push_back("\n");
@@ -319,8 +319,6 @@ void IRpool::print_builtin(std::ostream &os) {
             __func.type.name(), __func.name, __list 
         );
     }
-
-
 }
 
 
