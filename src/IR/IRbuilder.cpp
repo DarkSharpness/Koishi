@@ -340,7 +340,7 @@ void IRbuilder::create_builtin(AST::ASTbuilder *ctx) {
     function_map[global_scope->find("printlnInt")]  = builtin_function + 8;
     function_map[global_scope->find("getString")]   = builtin_function + 9;
     function_map[global_scope->find("getInt")]      = builtin_function + 10;
-    function_map[string_scope->find("toString")]    = builtin_function + 11;
+    function_map[global_scope->find("toString")]    = builtin_function + 11;
 
     return init_builtin_functions();
 }
@@ -619,12 +619,13 @@ void IRbuilder::visitMember(AST::member_expr *ctx) {
     /* Member function. This pointer has been loaded through visit(ctx->expr) */
     if (ctx->type.is_function()) return;
 
-    auto  __type    = transform_type(ctx->type);
-    auto *__class   = safe_cast <const custom_type *> (__type.base);
+    auto *__this    = get_value();
+    auto  __type    = ++transform_type(ctx->type);
     auto *__dest    = top->create_temporary(__type, "get");
+    auto *__class   = safe_cast <const custom_type *> (__this->get_value_type().base);
 
     top_block->push_back(IRpool::allocate <get_stmt> (
-        __dest, get_value(), IRpool::__zero__, __class->get_index(ctx->name)));
+        __dest, __this, IRpool::__zero__, __class->get_index(ctx->name)));
 
     return set_address(__dest);
 }
@@ -686,12 +687,13 @@ void IRbuilder::visitAtomic(AST::atomic_expr *ctx) {
 
     /* Implicit member variable access. Add offset. */
     if (__var == &member_variable) {
-        auto  __type    = transform_type(ctx->type);
-        auto *__class   = safe_cast <const custom_type *> (__type.base);
+        auto *__this    = top->args[0];
+        auto  __type    = ++transform_type(ctx->type);
         auto *__dest    = top->create_temporary(__type, "get");
+        auto *__class   = safe_cast <const custom_type *> (__this->type.base);
 
         top_block->push_back(IRpool::allocate <get_stmt> (
-            __dest, top->args[0], IRpool::__zero__, __class->get_index(ctx->name)));
+            __dest, __this, IRpool::__zero__, __class->get_index(ctx->name)));
         return set_address(__dest);
     } else { /* Return local_variable (in stack.) */
         return set_address(__var);
@@ -882,7 +884,9 @@ void IRbuilder::visitFunctionDef(AST::function_def *ctx) {
 }
 
 void IRbuilder::visitClassDef(AST::class_def *ctx) {
-    for (auto *__p : ctx->member) { top = nullptr; visit(__p); }
+    for (auto *__p : ctx->member)
+        if (auto *__func = dynamic_cast <AST::function_def *> (__p))
+            return visitFunctionDef(__func);
 }
 
 void IRbuilder::visitGlobalVariable(AST::variable *ctx, AST::literal_expr *__lit) {
@@ -914,6 +918,7 @@ void IRbuilder::visitGlobalVariable(AST::variable *ctx, AST::literal_expr *__lit
  * @param __args Index of each dimension (reverse order).
  */
 void IRbuilder::visitNewArray(typeinfo __type, std::vector <definition *> __args) {
+    throw std::string("Debug");
     runtime_assert(false, "Not implemented yet.");
 }
 
