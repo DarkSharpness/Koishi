@@ -266,6 +266,8 @@ void function::print(std::ostream &os) const {
         type.name(), name, __list 
     );
 
+    if (is_unreachable()) return void(os << "    unreachable\n}\n\n");
+
     /* Print all allocas. */
     alloca_stmt alloca { nullptr };
     for (auto *__p : locals) {
