@@ -1,6 +1,7 @@
 #include "antlr4-runtime.h"
 #include "MxLexer.h"
 #include "MxParser.h"
+#include "optimizer.h"
 
 #include "ASTerror.h"
 #include "ASTbuilder.h"
@@ -41,22 +42,25 @@ std::unique_ptr <dark::IR::IRbuilder> build_IR(
 
 void compiler_work() {
     /* From stdin to AST. */
-    auto Wankupi    = parse_input(std::cin);
+    auto Wankupi = parse_input(std::cin);
     /* AST Level sema check. Build up scope. */
-    auto Hastin     = check_input(Wankupi.get());
-    /* Debug message */
-    // std::cerr << Wankupi->ASTtree();
+    auto Hastin_ = check_input(Wankupi.get());
+    /* Optimize the AST tree. */
+    dark::optimizer::optimize_AST(Wankupi.get());
     /* From AST to IR. */
-    auto Conless    = build_IR(Wankupi.get(), Hastin.get());
+    auto Conless = build_IR(Wankupi.get(), Hastin_.get());
     /* Release resoures of AST. */
-    Hastin.reset();
+    Hastin_.reset();
     Wankupi.reset();
+    /* Optimize the LLVM IR. */
+    dark::optimizer::optimize_IR(Conless.get());
     /* Debug message */
     std::cout << Conless->IRtree();
 }
 
 signed main(int argc, char** argv) {
     try {
+        dark::optimizer::init(argc, argv);
         compiler_work();
     } catch(const std::exception& e) {
         /* If non-dark-error, speak out what. */
@@ -67,6 +71,6 @@ signed main(int argc, char** argv) {
         std::cerr << "Unknown error!" << std::endl;
         return 1;
     }
-    // std::cerr << "No error." << std::endl; // "No error.
+    std::cerr << "No error." << std::endl; // "No error.
     return 0;
 }

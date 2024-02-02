@@ -100,24 +100,6 @@ std::string join_strings(_Range &&__container) {
     return __ret;
 }
 
-/* Parsing AST string input into real ASCII string. */
-inline std::string Mx_string_parse(std::string __src) {
-    std::string __dst;
-    if(__src.front() != '\"' || __src.back() != '\"')
-        runtime_assert(false, "Invalid string literal.");
-    __src.pop_back();
-    for(size_t i = 1 ; i < __src.length() ; ++i) {
-        if(__src[i] == '\\') {
-            switch(__src[++i]) {
-                case 'n':  __dst.push_back('\n'); break;
-                case '\"': __dst.push_back('\"'); break;
-                case '\\': __dst.push_back('\\'); break;
-                default: throw error("Invalid escape sequence.");
-            }
-        } else __dst.push_back(__src[i]);
-    } return __dst;
-}
-
 /* Fix-sized vector. */
 template <typename _Tp, std::size_t _Nm>
 struct fixed_vector {

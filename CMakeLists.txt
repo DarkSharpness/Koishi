@@ -8,16 +8,14 @@ include_directories(/usr/include/antlr4-runtime/)
 include_directories(include)
 include_directories(include/AST)
 include_directories(include/IR)
+include_directories(include/OPT)
 include_directories(src/generated)
-include_directories(src/AST)
-include_directories(src/IR)
-
-
 
 file(GLOB_RECURSE sources src/*.cpp)
 add_executable(mxc ${sources})
 target_link_libraries(mxc PUBLIC antlr4-runtime)
 
+# Testing Part
 set(TestRootPath "${PROJECT_SOURCE_DIR}/Local/testcases/sema")
 file(GLOB_RECURSE test_files RELATIVE ${TestRootPath} ${TestRootPath}/**.mx)
 foreach (test_file ${test_files})
