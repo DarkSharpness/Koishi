@@ -100,9 +100,16 @@ void constantFolder::visitBinary(binary_expr *ctx) {
             std::swap(__lval, __rval);
             std::swap(ctx->lval, ctx->rval);
         }
-        return visitArithSingle(__lval, __rval, ctx->op.str[0]);
+        return visitArithSingle(ctx->lval, __rval, ctx->op.str[0]);
     }
 }
+
+static void warningDivideByZero(expression *__lhs, char __op) {
+    warning (
+        std::format("Divide by zero is undefined behavior: \"{} {} 0\"",
+            __lhs->to_string(), __op));
+}
+
 
 /**
  * Where both of the operands are literals.
@@ -116,10 +123,12 @@ void constantFolder::visitArithDouble(literal_expr * __lval, literal_expr *__rva
             case '-': __lval->name = std::to_string(__l - __r); break;
             case '*': __lval->name = std::to_string(__l * __r); break;
             case '/':
-                if (__r == 0) return setNotReplace(); // Undefined behavior!
+                if (__r == 0)  // Undefined behavior!
+                    return warningDivideByZero(__lval,'/'), setNotReplace();
                 __lval->name = std::to_string(__l / __r); break;
             case '%':
-                if (__r == 0) return setNotReplace(); // Undefined behavior!
+                if (__r == 0)  // Undefined behavior!
+                    return warningDivideByZero(__lval,'%'), setNotReplace();
                 __lval->name = std::to_string(__l % __r); break;
             case '&': __lval->name = std::to_string(__l & __r); break;
             case '|': __lval->name = std::to_string(__l | __r); break;
@@ -165,7 +174,7 @@ void constantFolder::visitArithSingle(expression * __lval, literal_expr *__rval,
             case '+': case '-': case '|': case '^': case '<': case '>':
                 return setReplace(__lval);
             case '/': case '%': /* Undefined behavior. */
-                return setNotReplace();
+                return warningDivideByZero(__lval, __op), setNotReplace();
             case '*': case '&': /* Always 0. */
                 return setReplace(__rval);
         }
@@ -278,11 +287,13 @@ void constantFolder::visitFor(for_stmt *ctx) {
     if (ctx->init) visit(ctx->init);
     if (ctx->cond) visitReplace(ctx->cond);
     if (ctx->step) visitReplace(ctx->step);
+    visit(ctx->body);
     return setNotReplace();
 }
 
 void constantFolder::visitWhile(while_stmt *ctx) {
     visitReplace(ctx->cond);
+    visit(ctx->body);
     return setNotReplace();
 }
 
