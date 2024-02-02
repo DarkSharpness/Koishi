@@ -244,6 +244,7 @@ void constantFolder::visitCompare(binary_expr *ctx, int __op) {
         case 3: __result = __cmp > 0; break;
         case 4: __result = __cmp <= 0; break;
         case 5: __result = __cmp >= 0; break;
+        default: __builtin_unreachable();
     }
 
     __lval->type = ctx->type;   // Boolean type.
