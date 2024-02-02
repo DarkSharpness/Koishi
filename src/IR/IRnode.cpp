@@ -389,3 +389,55 @@ phi_stmt::phi_stmt(temporary *__dest, _Phi_List __list)
 : dest(__dest), list(std::move(__list)) {}
 
 } // namespace dark::IR
+
+namespace dark::IR {
+
+void compare_stmt::update(definition *__old, definition *__new) {
+    if (lval == __old) lval = __new;
+    if (rval == __old) rval = __new;
+}
+
+void binary_stmt::update(definition *__old, definition *__new) {
+    if (lval == __old) lval = __new;
+    if (rval == __old) rval = __new;
+}
+
+void jump_stmt::update(definition *, definition *) {}
+
+void branch_stmt::update(definition *__old, definition *__new) {
+    if (cond == __old) cond = __new;
+}
+
+void call_stmt::update(definition *__old, definition *__new) {
+    for (auto &__p : args) if (__p == __old) __p = __new;
+}
+
+void load_stmt::update(definition *__old, definition *__new) {
+    if (addr == __old) addr = __new;
+}
+
+void store_stmt::update(definition *__old, definition *__new) {
+    if (addr == __old) addr = __new;
+    if (src_ == __old) src_ = __new;
+}
+
+void return_stmt::update(definition *__old, definition *__new) {
+    if (retval == __old) retval = __new;
+}
+
+void alloca_stmt::update(definition *, definition *) {}
+
+void get_stmt::update(definition *__old, definition *__new) {
+    if (addr == __old) addr = __new;
+    if (index == __old) index = __new;
+}
+
+void phi_stmt::update(definition *__old, definition *__new) {
+    for (auto &[__from, __init] : list) if (__init == __old) __init = __new;
+}
+
+void unreachable_stmt::update(definition *, definition *) {}
+
+
+} // namespace dark::IR
+

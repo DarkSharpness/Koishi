@@ -17,6 +17,7 @@ struct compare_stmt final : statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct binary_stmt final : statement {
@@ -33,6 +34,7 @@ struct binary_stmt final : statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct jump_stmt final : flow_statement {
@@ -44,6 +46,7 @@ struct jump_stmt final : flow_statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct branch_stmt final : flow_statement {
@@ -56,6 +59,7 @@ struct branch_stmt final : flow_statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct call_stmt final : statement {
@@ -69,6 +73,7 @@ struct call_stmt final : statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct load_stmt final : memory_statement {
@@ -81,6 +86,7 @@ struct load_stmt final : memory_statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct store_stmt final : memory_statement {
@@ -93,6 +99,7 @@ struct store_stmt final : memory_statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct return_stmt final : flow_statement {
@@ -105,6 +112,7 @@ struct return_stmt final : flow_statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct alloca_stmt final : statement {
@@ -116,6 +124,7 @@ struct alloca_stmt final : statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 /* Get elementptr. */
@@ -133,6 +142,7 @@ struct get_stmt final : statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 struct unreachable_stmt final : flow_statement {
@@ -141,10 +151,13 @@ struct unreachable_stmt final : flow_statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 /* Phi function. Which is not a "real" statement. */
 struct phi_stmt final : private statement {
+    /* Cast to base type. */
+    statement *to_base() { return static_cast <statement *> (this); }
     friend class central_allocator <statement>;
     struct entry {
         block      *from;
@@ -162,6 +175,7 @@ struct phi_stmt final : private statement {
     std::string data()      const override;
     temporary *get_def()    const override;
     _Def_List  get_use()    const override;
+    void update(definition *, definition *) override;
 };
 
 } // namespace dark::IR

@@ -9,6 +9,8 @@ namespace dark::IR {
 
 /* A definition can be variable / literal / temporary */
 struct definition {
+    template <std::derived_from <definition> _Tp>
+    _Tp *as() { return dynamic_cast <_Tp *> (this); }
     virtual std::string data()          const = 0;
     virtual typeinfo get_value_type()   const = 0;
     virtual ~definition() = default;
@@ -120,6 +122,9 @@ struct IRbuilder;
 
 struct node {
     using _Def_List = std::vector <definition *>;
+    /* Short form for dynamic cast. */
+    template <std::derived_from <node> _Tp>
+    _Tp *as() { return dynamic_cast <_Tp *> (this); }
     virtual void accept(IRbase * __v) = 0;
     /* Return the string form IR. */
     virtual std::string data() const = 0;
@@ -127,6 +132,8 @@ struct node {
     virtual temporary *get_def() const = 0;
     /* Return all the usages of the node. */
     virtual _Def_List  get_use() const = 0;
+    /* Update an old value with a new one. */
+    virtual void update(definition *, definition *) = 0;
     /* To avoid memory leak. */
     virtual ~node() = default;
 };
@@ -146,6 +153,8 @@ struct unreachable_stmt;
 
 using  statement = node;
 struct flow_statement : protected statement {
+    /* Cast to base type. */
+    statement *to_base() { return static_cast <statement *> (this); }
     /* Prevent implicit conversion to node. */
     friend class central_allocator <node>;
     void accept(IRbase * __v) override = 0;
@@ -155,6 +164,8 @@ struct flow_statement : protected statement {
     temporary *get_def() const override = 0;
     /* Return all the usages of the node. */
     _Def_List  get_use() const override = 0;
+    /* Update an old value with a new one. */
+    void update(definition *, definition *) override = 0;
 };
 struct memory_statement : statement {};
 
