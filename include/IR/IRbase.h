@@ -122,6 +122,8 @@ struct IRbuilder;
 
 struct node {
     using _Def_List = std::vector <definition *>;
+    /* Cast to base type. */
+    node *to_base() { return this; }
     /* Short form for dynamic cast. */
     template <std::derived_from <node> _Tp>
     _Tp *as() { return dynamic_cast <_Tp *> (this); }
