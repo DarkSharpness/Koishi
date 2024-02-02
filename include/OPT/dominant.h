@@ -23,8 +23,7 @@ struct dominantMaker {
     std::unordered_set  <block *> visited;
 
     dominantMaker(function *, bool = false);
-    void clean(function *);
-
+    static void clean(function *);
 };
 
 inline std::vector <block *> &getDom(block *__blk) {

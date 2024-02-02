@@ -88,7 +88,6 @@ dominantMaker::dominantMaker(function *__func, bool __is_post) {
     }
 }
 
-
 /**
  * Building the dominator tree iteratively. 
  */
@@ -136,7 +135,6 @@ bool dominantMaker::update(block *__node) {
     }
 }
 
-
 void dominantMaker::removeDummy(function *__func) {
     constexpr auto __erase = [](std::vector <block *> &__vec) {
         auto __iter = std::find(__vec.rbegin(), __vec.rend(), &dummy);
@@ -148,6 +146,15 @@ void dominantMaker::removeDummy(function *__func) {
         __erase(getDom(__p));
     }
     __erase(rpo);
+}
+
+void dominantMaker::clean(function *__func) {
+    for (auto &__p : __func->data) {
+        delete __p->get_impl_ptr <_Info_t>();
+        __p->set_impl_ptr(nullptr);
+    }
+    delete dummy.get_impl_ptr <_Info_t>();
+    dummy.set_impl_ptr(nullptr);
 }
 
 } // namespace dark::IR
