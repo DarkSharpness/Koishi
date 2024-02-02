@@ -276,9 +276,10 @@ struct type_checker {
     static const char *check_bool(binary_expr *ctx) {
         switch (ctx->op.str[0]) {
             case '&': case '|': // && and || are valid.
-                if (ctx->op.str[1]) break;
+                if (ctx->op.str[1]) break; [[fallthrough]];
             case '>': case '<': case '+': case '-': case '*': case '/': case '%': case '^':
                 runtime_assert(false, "Invalid operator on bool");
+                __builtin_unreachable();
         } return "bool";
     }
 

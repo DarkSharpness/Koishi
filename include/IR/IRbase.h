@@ -192,7 +192,7 @@ struct block final : hidden_impl {
 
     std::vector <statement*>    data;   // All normal statements
     std::vector  <block *>      prev;   // Predecessor blocks
-    fixed_vector <block *, 2>   next;   // Successor blocks
+    std::vector  <block *>      next;   // Successor blocks
 
     void push_phi(phi_stmt *);          // Push back a phi function
     void push_back(statement *);        // Push back a statement

@@ -878,8 +878,8 @@ void IRbuilder::visitFunctionDef(AST::function_def *ctx) {
                     __block->flow = IRpool::allocate <unreachable_stmt> ();
                 }
             }
-            if (__tag) warning(std::format(
-                "Missing return value in function \"{}\"", top->name));
+            // if (__tag) warning(std::format(
+            //     "Missing return value in function \"{}\"", top->name));
         }
     } else { /* Add back return 0. */
         for (auto *__block : top->data) {
@@ -889,7 +889,7 @@ void IRbuilder::visitFunctionDef(AST::function_def *ctx) {
             }
         }
         if (__tag) warning(
-            "Missing return value in main function.\t"
+            "Possible missing return value in main function.\t"
             "\"return 0;\" is added automatically."
         );
     }
