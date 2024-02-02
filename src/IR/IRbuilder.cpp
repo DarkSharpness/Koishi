@@ -207,9 +207,13 @@ IRbuilder::IRbuilder(AST::ASTbuilder *ctx, AST::scope *__s) : global_scope(__s) 
             create_function(__func, false);
     }
 
-    for (auto *__p : ctx->global) {
-        top = nullptr; visit(__p);
-    }
+    for (auto *__p : ctx->global) { top = nullptr; visit(__p); }
+
+    /* Add return 0/ statement to main function. */
+    top = main_function;
+    for (auto *__block : top->data)
+        if (!__block->flow)
+            __block->flow = IRpool::allocate <return_stmt> (IRpool::__zero__, top);
 }
 
 /**
@@ -862,38 +866,13 @@ void IRbuilder::visitFunctionDef(AST::function_def *ctx) {
 
     runtime_assert(branch_stack.empty(), "wtf?");
 
-    /* Check for the missing return. */
-    bool __tag {};
-    if (top != main_function) {
-        if (top->type == typeinfo { void_type::ptr(), 0 }) {
-            for (auto *__block : top->data) {
-                if (!__block->flow)
-                    __block->flow = IRpool::allocate <return_stmt> (nullptr, top);
-            }
-        } else {
-            /* Warning of no-return value. */
-            for (auto *__block : top->data) {
-                if (!__block->flow) {
-                    __tag = true;
-                    __block->flow = IRpool::allocate <unreachable_stmt> ();
-                }
-            }
-            // if (__tag) warning(std::format(
-            //     "Missing return value in function \"{}\"", top->name));
-        }
-    } else { /* Add back return 0. */
+    /* Add ret void automatically for void return functions. */
+    if (top->type == typeinfo { void_type::ptr(), 0 }) {
         for (auto *__block : top->data) {
-            if (!__block->flow) {
-                __tag = true;
-                __block->flow = IRpool::allocate <return_stmt> (IRpool::__zero__, top);
-            }
+            if (!__block->flow)
+                __block->flow = IRpool::allocate <return_stmt> (nullptr, top);
         }
-        if (__tag) warning(
-            "Possible missing return value in main function.\t"
-            "\"return 0;\" is added automatically."
-        );
-    }
-
+    } 
 }
 
 void IRbuilder::visitClassDef(AST::class_def *ctx) {
