@@ -78,7 +78,7 @@ dominantMaker::dominantMaker(function *__func, bool __is_post) {
                  *  2. x don't dominate y , x = y
                  *      <=> x = y , or x is not in domSet of y.
                 */
-                if (__node == __temp || isDominant(__node, __temp))
+                if (__node == __temp || isDominant(__temp, __node))
                     getFrontier(__temp).push_back(__node);
 
     for (auto __node : rpo) {
