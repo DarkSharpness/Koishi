@@ -248,14 +248,17 @@ bool block::is_unreachable() const {
     return dynamic_cast <unreachable_stmt *> (flow);
 }
 
-/**
- * @brief Create a temporary value with given type and name.
- */
+/* Create a temporary value with given type and name. */
 temporary *function::create_temporary(typeinfo __tp, const std::string &__str) {
     auto *__temp = IRpool::allocate <temporary> ();
     __temp->type = __tp;
-    __temp->name = std::format("%{}-{}", __str, temp_count[__str]++);
+    __temp->name = register_temporary(__str);
     return __temp;
+}
+
+/* Register the usage of one name. */
+std::string function::register_temporary(const std::string &__str) {
+    return std::format("%{}-{}", __str, temp_count[__str]++);
 }
 
 void function::push_back(block *__blk) { data.push_back(__blk); }

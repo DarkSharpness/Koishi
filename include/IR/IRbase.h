@@ -231,6 +231,7 @@ struct function final : hidden_impl {
     bool has_output {};
 
     temporary *create_temporary(typeinfo, const std::string &);
+    std::string register_temporary(const std::string &);
 
     void push_back(block *);
     // void push_back(statement *);     // To avoid misusage.

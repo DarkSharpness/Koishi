@@ -273,7 +273,7 @@ void IRbuilder::create_function(AST::function_def *ctx, bool __is_member) {
     for (auto *__p : ctx->locals) {
         auto *__var = IRpool::allocate <local_variable> ();
         __var->type = ++transform_type(__p->type);
-        __var->name = __p->unique_name;
+        __var->name = __p->unique_name + ".addr";
         variable_map[__p] = __var;
         top->locals.push_back(__var);
     }
@@ -296,7 +296,7 @@ void IRbuilder::create_function(AST::function_def *ctx, bool __is_member) {
         auto *__old = ctx->field->find(name);
         auto *__arg = IRpool::allocate <argument> ();
         __arg->type = transform_type(__type);
-        __arg->name = __old->unique_name;
+        __arg->name = top->register_temporary(__old->name);
         top->args.push_back(__arg);
 
         /* The local variable used to store the function argument. */
@@ -756,6 +756,10 @@ void IRbuilder::visitFor(AST::for_stmt *ctx) {
         }
     };
 
+    auto *__loop_cond = IRpool::allocate <block> ();
+    end_block(IRpool::allocate <jump_stmt> (__loop_cond));
+    add_block(__loop_cond);
+
     __visit_cond();
 
     add_block(__loop_body);
@@ -767,7 +771,9 @@ void IRbuilder::visitFor(AST::for_stmt *ctx) {
     add_block(__loop_step);
 
     if (ctx->step) visit(ctx->step), set_invalid();
-    __visit_cond();
+
+    end_block(IRpool::allocate <jump_stmt> (__loop_cond));
+    // __visit_cond();
 
     return add_block(__loop_end); // End of the loop.
 }
