@@ -846,12 +846,14 @@ void IRbuilder::visitVariableDef(AST::variable_def *ctx) {
                 dynamic_cast <AST::literal_expr *> (__init));
         }
     } else { // Local variable.
+        /* Default as undefined value. */
+        auto __default = IRpool::create_undefined(transform_type(ctx->type));
         for (auto &&[__name, __init] : ctx->vars) {
-            if (!__init) continue; // Nothing to do :)
-            visit(__init);
+            definition *__val = __default;
+            if (__init) { visit(__init); __val = get_value(); }
             /* The local variable_map has been built in create_function */
             top_block->push_back(IRpool::allocate <store_stmt> (
-                get_value(), variable_map[ctx->field->find(__name)]));
+                __val, variable_map[ctx->field->find(__name)]));
         }
     }
 }
