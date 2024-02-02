@@ -4,6 +4,24 @@
 
 namespace dark::AST {
 
+/* Parsing AST string input into real ASCII string. */
+static std::string Mx_string_parse(std::string __src) {
+    std::string __dst;
+    if (__src.front() != '\"' || __src.back() != '\"')
+        runtime_assert(false, "Invalid string literal.");
+    __src.pop_back();
+    for( size_t i = 1 ; i < __src.length() ; ++i) {
+        if (__src[i] == '\\') {
+            switch (__src[++i]) {
+                case 'n':  __dst.push_back('\n'); break;
+                case '\"': __dst.push_back('\"'); break;
+                case '\\': __dst.push_back('\\'); break;
+                default: throw error("Invalid escape sequence.");
+            }
+        } else __dst.push_back(__src[i]);
+    } return __dst;
+}
+
 std::any ASTbuilder::visitFile_Input(MxParser::File_InputContext *ctx) {
     for (auto __p : ctx->children) {
         if (__p->getText() == "<EOF>") break;
@@ -275,6 +293,8 @@ std::any ASTbuilder::visitLiteral(MxParser::LiteralContext *ctx) {
     else if (__ptr->Null())     __literal->sort = literal_expr::_NULL_;
     else if (__ptr->Cstring())  __literal->sort = literal_expr::STRING;
     else                        __literal->sort = literal_expr::_BOOL_;
+    if (__literal->sort == literal_expr::STRING)
+        __literal->name = Mx_string_parse(std::move(__literal->name));
     return set_node(__literal);
 }
 

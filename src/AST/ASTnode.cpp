@@ -69,7 +69,7 @@ std::string subscript_expr::to_string() const {
     for (auto __p : subscript) {
         __ret.emplace_back("[");
         __ret.emplace_back(__p->to_string());
-        __ret.emplace_back("[");
+        __ret.emplace_back("]");
     }
     return join_strings(__ret);
 }
@@ -134,8 +134,22 @@ std::string construct_expr::to_string() const {
 }
 
 std::string atomic_expr::to_string()   const { return name; }
-
-std::string literal_expr::to_string()  const { return name; }
+std::string literal_expr::to_string()  const {
+    if (sort != STRING) return name;
+    std::string __ret;
+    __ret.reserve(name.size() + 3);
+    __ret.push_back('\"');
+    for (auto __c : name) {
+        switch (__c) {
+            case '\n': __ret += "\\n"; break;
+            case '\"': __ret += "\\\""; break;
+            case '\\': __ret += "\\\\"; break;
+            default: __ret += __c;
+        }
+    }
+    __ret.push_back('\"');
+    return __ret;
+}
 
 } // namespace dark::AST
 

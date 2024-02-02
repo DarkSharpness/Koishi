@@ -84,8 +84,8 @@ struct literal_expr final : expression {
         _NULL_,
         _BOOL_,
     } sort; // Type of the literal.
-    std::string name;
-    std::string to_string()const override;
+    std::string name;       // Raw string of the literal.
+    std::string to_string() const override;
     void accept(ASTbase *visitor) override { visitor->visitLiteral(this); }
 };
 

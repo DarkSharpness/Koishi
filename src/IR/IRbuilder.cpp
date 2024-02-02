@@ -717,7 +717,7 @@ void IRbuilder::visitAtomic(AST::atomic_expr *ctx) {
 void IRbuilder::visitLiteral(AST::literal_expr *ctx) {
     switch (ctx->sort) {
         case ctx->NUMBER: return set_value(IRpool::create_integer(std::stoi(ctx->name)));
-        case ctx->STRING: return set_value(IRpool::create_string(Mx_string_parse(ctx->name)));
+        case ctx->STRING: return set_value(IRpool::create_string(ctx->name));
         case ctx->_NULL_: return set_value(IRpool::__null__);
         case ctx->_BOOL_: return set_value(IRpool::create_boolean(ctx->name == "true"));
         runtime_assert(false, "Unknown literal type.");
@@ -916,7 +916,7 @@ void IRbuilder::visitGlobalVariable(AST::variable *ctx, AST::literal_expr *__lit
         __ret = IRpool::create_integer(__lit ? std::stoi(__lit->name) : 0);
     } else if (__lit && __lit->sort == __lit->STRING) {
         __ret = IRpool::create_pointer(
-            IRpool::create_string(Mx_string_parse(__lit->name)));
+            IRpool::create_string(__lit->name));
     } else { // Null pointer case
         __ret = IRpool::__null__;
     }
