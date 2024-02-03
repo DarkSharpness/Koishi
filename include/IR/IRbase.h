@@ -207,6 +207,8 @@ struct block final : hidden_impl {
     std::vector  <block *>      prev;   // Predecessor blocks
     std::vector  <block *>      next;   // Successor blocks
 
+    std::string comments;           // Comments for this block
+
     void push_phi(phi_stmt *);          // Push back a phi function
     void push_back(statement *);        // Push back a statement
     void print(std::ostream &) const;   // Print the block data

@@ -237,7 +237,10 @@ namespace dark::IR {
 void block::push_phi(phi_stmt *__phi) { phi.push_back(__phi); }
 void block::push_back(statement *__stmt) { data.push_back(__stmt); }
 void block::print(std::ostream &os) const {
-    os << name << ":\n";
+    os << name << ":";
+    if (!comments.empty())
+        os << std::format("\t\t\t\t\t\t\t\t; # {}", comments);
+    os << '\n';
     for (auto *__p : phi)   os << "    " << __p->data();
     for (auto *__p : data)  os << "    " << __p->data();
     runtime_assert(flow, "No terminator in block!");

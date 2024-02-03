@@ -3,6 +3,7 @@
 #include "ASTbuilder.h"
 #include "IRnode.h"
 #include "IRbuilder.h"
+#include "IRhelper.h"
 #include <ranges>
 #include <sstream>
 
@@ -162,7 +163,7 @@ std::string IRbuilder::IRtree() const {
     /* Class definitions. */
     for (auto &&[__str, __class] : class_map)
         if (auto *__ptr = dynamic_cast <custom_type *> (__class))
-            ss << __ptr->data();
+            ss << __ptr->data() << '\n';
     ss << '\n';
 
     for (auto &&__var : global_variables)
@@ -267,6 +268,7 @@ void IRbuilder::create_function(AST::function_def *ctx, bool __is_member) {
     top->name = ctx->unique_name;
 
     auto *__entry = IRpool::allocate <block> ();
+    __entry->comments = "entry";
     top->push_back(__entry);
 
     /* Create all local variables. */
@@ -515,6 +517,7 @@ void IRbuilder::visitShortCircuit(AST::binary_expr *ctx, bool __op) {
     if (branch_stack.empty()) return visitShortCircuitPhi(ctx, __op);
     /* Branch short circuit. Specially optimized. */
     auto *__branch_tmp  = IRpool::allocate <block> ();
+    __branch_tmp->comments = "short circuit fail";
 
     branch_stack.push_back(branch_stack.back());
     branch_stack.back().branch[!__op]  = __branch_tmp;
@@ -537,6 +540,9 @@ void IRbuilder::visitShortCircuitPhi(AST::binary_expr *ctx, bool __op) {
     auto *__branch_true_    = IRpool::allocate <block> ();
     auto *__branch_false    = IRpool::allocate <block> ();
     auto *__branch_end      = IRpool::allocate <block> ();
+    __branch_true_->comments = "short circuit true";
+    __branch_false->comments = "short circuit false";
+    __branch_end->comments   = "short circuit end";
     branch_stack.push_back({__branch_false, __branch_true_});
 
     visitShortCircuit(ctx, __op);
@@ -589,6 +595,8 @@ void IRbuilder::visitCompare(AST::binary_expr *ctx, int __input) {
 void IRbuilder::visitTernary(AST::ternary_expr *ctx) {
     auto *__branch_true_    = IRpool::allocate <block> ();
     auto *__branch_false    = IRpool::allocate <block> ();
+    __branch_true_->comments = "ternary true";
+    __branch_false->comments = "ternary false";
     branch_stack.push_back({__branch_false, __branch_true_});
 
     visit(ctx->cond);
@@ -603,6 +611,7 @@ void IRbuilder::visitTernary(AST::ternary_expr *ctx) {
     };
 
     auto *__branch_end = IRpool::allocate <block> ();
+    __branch_end->comments = "ternary end";
 
     add_block(__branch_true_);
     visit(ctx->lval);
@@ -741,6 +750,9 @@ void IRbuilder::visitFor(AST::for_stmt *ctx) {
     auto *__loop_body   = IRpool::allocate <block> ();
     auto *__loop_step   = IRpool::allocate <block> ();
     auto *__loop_end    = IRpool::allocate <block> ();
+    __loop_body->comments = "loop body";
+    __loop_step->comments = "loop step";
+    __loop_end->comments  = "loop end";
 
     /* Capturing __loop_end, __loop_body, ctx, this. */
     auto __visit_cond = [=, this]() {
@@ -772,8 +784,14 @@ void IRbuilder::visitFor(AST::for_stmt *ctx) {
 
     if (ctx->step) visit(ctx->step), set_invalid();
 
-    end_block(IRpool::allocate <jump_stmt> (__loop_cond));
-    // __visit_cond();
+    /* Whether we should formatize the loop. */
+    bool __early_format =
+        AST::ExpressionLength {ctx->cond}.length < 114;
+    if (__early_format) {
+        __visit_cond(); // Visit the condition again.
+    } else {
+        end_block(IRpool::allocate <jump_stmt> (__loop_cond));
+    }
 
     return add_block(__loop_end); // End of the loop.
 }
@@ -822,9 +840,12 @@ void IRbuilder::visitSimple(AST::simple_stmt *ctx) {
 
 void IRbuilder::visitBranch(AST::branch_stmt *ctx) {
     auto *__branch_exit = IRpool::allocate <block> ();
+    __branch_exit->comments = "branch exit";
     for (const auto &[__cond, __body] : ctx->branches) {
         auto *__branch_body = IRpool::allocate <block> ();
         auto *__branch_fail = IRpool::allocate <block> ();
+        __branch_body->comments = "branch body";
+        __branch_fail->comments = "branch fail";
 
         branch_stack.push_back({__branch_fail, __branch_body});
         visit(__cond);
@@ -947,6 +968,9 @@ void IRbuilder::visitNewArray(typeinfo __type, std::vector <definition *> __args
     auto *__loop_cond = IRpool::allocate <block> ();
     auto *__loop_body = IRpool::allocate <block> ();
     auto *__loop_exit = IRpool::allocate <block> ();
+    __loop_cond->comments = "new cond";
+    __loop_body->comments = "new body";
+    __loop_exit->comments = "new exit";
 
     auto *__iter = top->create_temporary(__type, "new.cur");
     auto *__temp = top->create_temporary(__type, "new.sub");
