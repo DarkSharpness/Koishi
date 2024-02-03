@@ -56,7 +56,7 @@ void optimizer::optimize_IR(IR::IRbuilder *ctx) {
 
     }
 
-
+    std::cout << ctx->IRtree();
 }
 
 

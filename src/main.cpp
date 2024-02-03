@@ -54,8 +54,6 @@ void compiler_work() {
     Wankupi.reset();
     /* Optimize the LLVM IR. */
     dark::optimizer::optimize_IR(Conless.get());
-    /* Debug message */
-    std::cout << Conless->IRtree();
 }
 
 signed main(int argc, char** argv) {
