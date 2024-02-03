@@ -151,10 +151,7 @@ struct unreachable_stmt final : flow_statement {
 };
 
 /* Phi function. Which is not a "real" statement. */
-struct phi_stmt final : private statement {
-    /* Cast to base type. */
-    statement *to_base() { return static_cast <statement *> (this); }
-    friend class central_allocator <statement>;
+struct phi_stmt final : statement {
     struct entry {
         block      *from;
         definition *init;
@@ -180,9 +177,24 @@ struct phi_stmt final : private statement {
  */
 template <typename _Rule>
 inline void visitBlock(block *__block, _Rule &&__rule) {
-    for (auto &__stmt : __block->phi)    __rule(__stmt->to_base());
-    for (auto &__stmt : __block->data)   __rule(__stmt->to_base());
-    __rule(__block->flow->to_base());
+    for (auto &__stmt : __block->phi)    __rule(__stmt);
+    for (auto &__stmt : __block->data)   __rule(__stmt);
+    __rule(__block->flow);
+}
+
+template <typename _Rule>
+inline void updateBlock(block *__block, _Rule &&__rule) {
+    auto &&__range1 = __block->phi | __rule;
+    auto __first1 = __block->phi.begin();
+    __block->phi.resize(std::ranges::copy(__range1, __first1).out - __first1);
+
+    auto &&__range0 = __block->data | __rule;
+    auto __first0 = __block->data.begin();
+    __block->data.resize(std::ranges::copy(__range0, __first0).out - __first0);
+
+    
+
+
 }
 
 

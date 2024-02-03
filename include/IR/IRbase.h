@@ -123,8 +123,6 @@ struct IRbuilder;
 
 struct node {
     using _Def_List = std::vector <definition *>;
-    /* Cast to base type. */
-    node *to_base() { return this; }
     /* Short form for dynamic cast. */
     template <typename _Tp> requires std::is_base_of_v <node, _Tp>
     _Tp *as() { return dynamic_cast <_Tp *> (this); }
@@ -155,20 +153,9 @@ struct phi_stmt;
 struct unreachable_stmt;
 
 using  statement = node;
-struct flow_statement : protected statement {
-    /* Cast to base type. */
-    statement *to_base() { return static_cast <statement *> (this); }
-    /* Prevent implicit conversion to node. */
-    friend class central_allocator <node>;
-    void accept(IRbase * __v) override = 0;
-    /* Return the string form IR. */
-    std::string data()  const override = 0;
+struct flow_statement : statement {
     /* Return the temporary this statment defines. */
     temporary *get_def() const override final { return nullptr; }
-    /* Return all the usages of the node. */
-    _Def_List  get_use() const override = 0;
-    /* Update an old value with a new one. */
-    void update(definition *, definition *) override = 0;
 };
 struct memory_statement : statement {};
 

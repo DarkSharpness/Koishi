@@ -23,6 +23,15 @@ static std::string __find_first_name(std::string_view __name) {
     return std::string(__name.substr(0, __name.find_first_of('-')));
 }
 
+/* Create a phi for a local variable. */
+static phi_stmt *__make_phi(function *__func,local_variable *__var) {
+    return IRpool::allocate <phi_stmt> (
+        __func->create_temporary(
+            --__var->type,
+            __find_first_name(__var->name)
+    ));
+}
+
 
 mem2regPass::mem2regPass(function *__func) : top(__func) {
     dominantMaker dom {__func};
@@ -65,7 +74,7 @@ void mem2regPass::spreadDef(block *__node) {
         auto &__map = phiMap[__next];
         for (auto *__var : defs) {
             auto &__phi = __map[__var];
-            if (!__phi) __phi = IRpool::allocate <phi_stmt> (nullptr);
+            if (!__phi) __phi = __make_phi(top, __var);
         }
     }
 }
@@ -102,7 +111,7 @@ void mem2regPass::spreadPhi() {
             for (auto __var : __cur) {
                 auto &__phi = __map[__var];
                 if (!__phi) {
-                    __phi = IRpool::allocate <phi_stmt> (nullptr);
+                    __phi = __make_phi(top, __var);
                     __vec.push_back(__var);
                     ++__cnt;
                 }
@@ -119,14 +128,10 @@ void mem2regPass::rename(block *__node) {
     auto &__map = phiMap[__node];
 
     /* First, record those newly placed phi functions. */
-    for (auto [__var, __phi] : __map) {
-        __phi->dest = top->create_temporary(
-            --__var->type, __find_first_name(__var->name));
-        varMap[__var] = __phi->dest;
-    }
+    for (auto [__var, __phi] : __map) varMap[__var] = __phi->dest;
 
     /* Then, goes to the body. */
-    visitBlock(__node);
+    updateBlock(__node);
 
     /* Now, complete initialing those newly placed phi functions
         by setting the incoming values correspondingly. */
@@ -139,7 +144,7 @@ void mem2regPass::rename(block *__node) {
     varMap = std::move(*__bak);
 }
 
-void mem2regPass::visitBlock(block *__node) {
+void mem2regPass::updateBlock(block *__node) {
     /* Key operation : load/store replacement. */
     auto __operation = [this](statement *__stmt) -> bool {
         if (auto *__store = __stmt->as <store_stmt>()) {
@@ -196,11 +201,7 @@ void mem2regPass::collectUse(block *__node) {
                 useMap[__var].push_back(__stmt);
     };
 
-    for (auto __stmt : __node->phi)
-        __operation(__stmt->to_base());
-    for (auto __stmt : __node->data) 
-        __operation(__stmt->to_base());
-    __operation(__node->flow->to_base());
+    visitBlock(__node, __operation);
 }
 
 void mem2regPass::insertPhi(block *__block) {

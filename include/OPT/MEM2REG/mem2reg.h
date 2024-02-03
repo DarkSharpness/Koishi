@@ -38,7 +38,7 @@ struct mem2regPass {
     void rename(block *);
     void insertPhi(block *);
     void collectUse(block *);
-    void visitBlock(block *);
+    void updateBlock(block *);
     void spreadBranch(block *, block *);
 };
 
