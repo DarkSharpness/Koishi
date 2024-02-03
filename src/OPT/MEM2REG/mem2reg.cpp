@@ -100,7 +100,7 @@ void mem2regPass::spreadPhi() {
     std::deque <block *> queue { rpo.begin() , rpo.end() };
 
     do { /* In queue iff __added[__node].size() > 0 */
-        auto __node = queue.front(); queue.pop_back();
+        auto __node = queue.front(); queue.pop_front();
         auto __cur  = std::move(__added[__node]);
 
         /* Visit the frontier, tries to update. */
