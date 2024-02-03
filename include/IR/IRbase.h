@@ -125,7 +125,7 @@ struct node {
     /* Cast to base type. */
     node *to_base() { return this; }
     /* Short form for dynamic cast. */
-    template <std::derived_from <node> _Tp>
+    template <typename _Tp> requires std::is_base_of_v <node, _Tp>
     _Tp *as() { return dynamic_cast <_Tp *> (this); }
     virtual void accept(IRbase * __v) = 0;
     /* Return the string form IR. */
@@ -163,7 +163,7 @@ struct flow_statement : protected statement {
     /* Return the string form IR. */
     std::string data()  const override = 0;
     /* Return the temporary this statment defines. */
-    temporary *get_def() const override = 0;
+    temporary *get_def() const override final { return nullptr; }
     /* Return all the usages of the node. */
     _Def_List  get_use() const override = 0;
     /* Update an old value with a new one. */
@@ -239,6 +239,7 @@ struct function final : hidden_impl {
     // void push_back(statement *);     // To avoid misusage.
     void print(std::ostream &) const;   // Print the function data
     bool is_unreachable() const;        // Is this function unreachable?
+    bool is_side_effective() const;     // Is this function side effective?
 };
 
 /* A global memory pool for IR. */

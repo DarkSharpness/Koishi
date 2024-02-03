@@ -44,7 +44,6 @@ struct jump_stmt final : flow_statement {
 
     void accept(IRbase *v)  override { v->visitJump(this); }
     std::string data()      const override;
-    temporary *get_def()    const override;
     _Def_List  get_use()    const override;
     void update(definition *, definition *) override;
 };
@@ -57,7 +56,6 @@ struct branch_stmt final : flow_statement {
 
     void accept(IRbase *v)  override { v->visitBranch(this); }
     std::string data()      const override;
-    temporary *get_def()    const override;
     _Def_List  get_use()    const override;
     void update(definition *, definition *) override;
 };
@@ -110,7 +108,6 @@ struct return_stmt final : flow_statement {
 
     void accept(IRbase *v)  override { v->visitReturn(this); }
     std::string data()      const override;
-    temporary *get_def()    const override;
     _Def_List  get_use()    const override;
     void update(definition *, definition *) override;
 };
@@ -149,7 +146,6 @@ struct unreachable_stmt final : flow_statement {
     explicit unreachable_stmt() = default;
     void accept(IRbase *v)  override { v->visitUnreachable(this); }
     std::string data()      const override;
-    temporary *get_def()    const override;
     _Def_List  get_use()    const override;
     void update(definition *, definition *) override;
 };
@@ -177,5 +173,19 @@ struct phi_stmt final : private statement {
     _Def_List  get_use()    const override;
     void update(definition *, definition *) override;
 };
+
+/**
+ * @brief A custom visitor for IRblock.
+ * @tparam _Rule A callable object.
+ */
+template <typename _Rule>
+inline void visitBlock(block *__block, _Rule &&__rule) {
+    for (auto &__stmt : __block->phi)    __rule(__stmt->to_base());
+    for (auto &__stmt : __block->data)   __rule(__stmt->to_base());
+    __rule(__block->flow->to_base());
+}
+
+
+
 
 } // namespace dark::IR

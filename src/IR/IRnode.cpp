@@ -203,9 +203,9 @@ temporary *compare_stmt::get_def() const { return dest; }
 _Def_List  compare_stmt::get_use() const { return { lval, rval }; }
 temporary *binary_stmt::get_def() const { return dest; }
 _Def_List  binary_stmt::get_use() const { return { lval, rval }; }
-temporary *jump_stmt::get_def() const { return nullptr; }
+// temporary *jump_stmt::get_def() const { return nullptr; }
 _Def_List jump_stmt::get_use() const { return {}; }
-temporary *branch_stmt::get_def() const { return nullptr; }
+// temporary *branch_stmt::get_def() const { return nullptr; }
 _Def_List branch_stmt::get_use() const { return { cond }; }
 temporary *call_stmt::get_def() const { return dest; }
 _Def_List  call_stmt::get_use() const { return args; }
@@ -213,13 +213,13 @@ temporary *load_stmt::get_def() const { return dest; }
 _Def_List  load_stmt::get_use() const { return { addr }; }
 temporary *store_stmt::get_def() const { return nullptr; }
 _Def_List  store_stmt::get_use() const { return { addr, src_ }; }
-temporary *return_stmt::get_def() const { return nullptr; }
+// temporary *return_stmt::get_def() const { return nullptr; }
 _Def_List  return_stmt::get_use() const { return { retval }; }
 temporary *alloca_stmt::get_def() const { return nullptr; }
 _Def_List  alloca_stmt::get_use() const { return {}; }
 temporary *get_stmt::get_def() const { return dest; }
 _Def_List  get_stmt::get_use() const { return { addr, index }; }
-temporary *unreachable_stmt::get_def() const { return nullptr; }
+// temporary *unreachable_stmt::get_def() const { return nullptr; }
 _Def_List  unreachable_stmt::get_use() const { return {}; }
 temporary *phi_stmt::get_def() const { return dest; }
 _Def_List  phi_stmt::get_use() const {
@@ -290,6 +290,11 @@ void function::print(std::ostream &os) const {
 }
 
 bool function::is_unreachable() const { return data.empty(); }
+
+bool function::is_side_effective() const {
+    if (!is_builtin) return true;
+    return has_input | has_output;
+}
 
 namespace detail {
 
