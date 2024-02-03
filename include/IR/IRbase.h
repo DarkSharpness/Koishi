@@ -25,7 +25,7 @@ struct undefined final: definition {
     std::string        data()   const override;
     ~undefined() override = default;
 };
-
+struct node;
 /* Literal constants. */
 struct literal;
 /* Non literal value. (Variable / Temporary) */
@@ -35,9 +35,10 @@ struct non_literal : definition {
     typeinfo get_value_type()   const override final { return type; }
     std::string        data()   const override final { return name; }
 };
-
 /* Temporary values. */
-struct temporary final : non_literal {};
+struct temporary final : non_literal {
+    node *def {}; /* The statement that defines this temporary. */
+};
 /* Variables are pointers to value. */
 struct variable : non_literal {};
 /* Function parameters. */

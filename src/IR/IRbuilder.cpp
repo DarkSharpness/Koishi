@@ -375,7 +375,10 @@ void IRbuilder::visitSubscript(AST::subscript_expr *ctx) {
 
 void IRbuilder::visitFunction(AST::function_expr *ctx) {
     auto *__func = function_map[ctx->func];
-    auto *__call = IRpool::allocate <call_stmt> (nullptr, __func);
+    bool  __void = __is_void_type(__func->type);
+    auto *__dest = !__void ?
+        top->create_temporary(__func->type, "call") : nullptr;
+    auto *__call = IRpool::allocate <call_stmt> (__dest, __func);
 
     /* Member function, which needs to load this pointer. */
     if (ctx->func->unique_name[0] != '.') {
@@ -388,14 +391,8 @@ void IRbuilder::visitFunction(AST::function_expr *ctx) {
     }
 
     top_block->push_back(__call);
-
-    if (__call->func->type != typeinfo { void_type::ptr(), 0 }) {
-        __call->dest = top->create_temporary(__call->func->type, "call");
-        set_value(__call->dest);
-    } else { // Void type func call, no return value.
-        __call->dest = nullptr;
-        set_invalid();
-    }
+    if (__dest) set_value(__dest);
+    else        set_invalid();
 }
 
 void IRbuilder::visitUnary(AST::unary_expr *ctx) {

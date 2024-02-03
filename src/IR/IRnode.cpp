@@ -346,14 +346,14 @@ compare_stmt::compare_stmt(
     definition  *__lval,
     definition  *__rval,
     compare_op   __op
-) : dest(__dest), lval(__lval), rval(__rval), op(__op) {}
+) : dest(__dest), lval(__lval), rval(__rval), op(__op) { __dest->def = this; }
 
 binary_stmt::binary_stmt(
     temporary   *__dest,
     definition  *__lval,
     definition  *__rval,
     binary_op    __op
-) : dest(__dest), lval(__lval), rval(__rval), op(__op) {}
+) : dest(__dest), lval(__lval), rval(__rval), op(__op) { __dest->def = this; }
 
 jump_stmt::jump_stmt(block *__dest) : dest(__dest) {}
 
@@ -368,12 +368,14 @@ branch_stmt::branch_stmt(
 call_stmt::call_stmt(
     temporary   *__dest,
     function    *__func
-) : dest(__dest), func(__func) {}
+) : dest(__dest), func(__func) {
+    if (dest) __dest->def = this;
+}
 
 load_stmt::load_stmt(
     temporary   *__dest,
     non_literal *__addr
-) : dest(__dest), addr(__addr) {}
+) : dest(__dest), addr(__addr) { __dest->def = this; }
 
 store_stmt::store_stmt(
     definition  *__src,
@@ -393,11 +395,11 @@ get_stmt::get_stmt(
     definition  *__addr,
     definition  *__index,
     std::size_t  __member
-) : dest(__dest), addr(__addr), index(__index), member(__member) {}
+) : dest(__dest), addr(__addr), index(__index), member(__member) { __dest->def = this; }
 
-phi_stmt::phi_stmt(temporary *__dest) : dest(__dest) {}
+phi_stmt::phi_stmt(temporary *__dest) : dest(__dest) { __dest->def = this; }
 phi_stmt::phi_stmt(temporary *__dest, _Phi_List __list) 
-: dest(__dest), list(std::move(__list)) {}
+: dest(__dest), list(std::move(__list)) { __dest->def = this; }
 
 } // namespace dark::IR
 
