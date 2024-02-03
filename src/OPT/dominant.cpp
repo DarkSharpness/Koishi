@@ -8,15 +8,26 @@
 namespace dark::IR {
 
 
+static void __printDebug(block *__block) {
+    std::cerr << __block->name << ":";
+    std::cerr << "\n\tFrontier:\t";
+    for (auto __p : getFrontier(__block))
+        std::cerr << __p->name << " ";
+    std::cerr << "\n\tDomed by:\t";
+    for (auto __p : getDom(__block))
+        std::cerr << __p->name << " ";
+    std::cerr << '\n';
+}
+
 /**
  * @return Whether x dominates y.
  */
-static bool isDominant(block *__x, block *__y) {
+static bool __isDom(block *__x, block *__y) {
     auto &__dom = getDom(__y);
     return std::binary_search(__dom.begin(), __dom.end(), __x);
 }
 
-static void link(block *__prev, block *__next) {
+static void __link(block *__prev, block *__next) {
     __prev->next.push_back(__next);
     __next->prev.push_back(__prev);
 }
@@ -30,13 +41,13 @@ void dominantMaker::initEdge(function *__func) {
 
     for (auto &__p : __func->data) {
         if (auto *__br = dynamic_cast <branch_stmt *> (__p->flow)) {
-            link(__p, __br->branch[0]);
-            link(__p, __br->branch[1]);
+            __link(__p, __br->branch[0]);
+            __link(__p, __br->branch[1]);
         }
         else if (auto *__jump = dynamic_cast <jump_stmt *> (__p->flow))
-            link(__p, __jump->dest);
+            __link(__p, __jump->dest);
         else if (dynamic_cast <return_stmt *> (__p->flow))
-            link(__p, &dummy);
+            __link(__p, &dummy);
 
         __p->set_impl_ptr(new _Info_t);
     }
@@ -49,7 +60,7 @@ void dominantMaker::makeRpo(block *__entry) {
 }
 
 dominantMaker::dominantMaker(function *__func, bool __is_post) {
-    initEdge(__func);
+    initEdge(__func); dummy.name = ".dummy";
 
     unreachableRemover {__func};
     if (__func->is_unreachable()) return;
@@ -78,7 +89,7 @@ dominantMaker::dominantMaker(function *__func, bool __is_post) {
                  *  2. x don't dominate y , x = y
                  *      <=> x = y , or x is not in domSet of y.
                 */
-                if (__node == __temp || isDominant(__temp, __node))
+                if (__node == __temp || !__isDom(__temp, __node))
                     getFrontier(__temp).push_back(__node);
 
     for (auto __node : rpo) {
