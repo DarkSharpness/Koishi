@@ -14,7 +14,7 @@ static void __printDebug(block *__block) {
     for (auto __p : getFrontier(__block))
         std::cerr << __p->name << " ";
     std::cerr << "\n\tDomed by:\t";
-    for (auto __p : getDom(__block))
+    for (auto __p : getDomSet(__block))
         std::cerr << __p->name << " ";
     std::cerr << '\n';
 }
@@ -23,7 +23,7 @@ static void __printDebug(block *__block) {
  * @return Whether x dominates y.
  */
 static bool __isDom(block *__x, block *__y) {
-    auto &__dom = getDom(__y);
+    auto &__dom = getDomSet(__y);
     return std::binary_search(__dom.begin(), __dom.end(), __x);
 }
 
@@ -81,7 +81,7 @@ dominantMaker::dominantMaker(function *__func, bool __is_post) {
     removeDummy(__func);
     for (auto __node : rpo) // Enumerate "y"
         for (auto __prev : __node->prev)
-            for (auto __temp : getDom(__prev))  // Possible "x"
+            for (auto __temp : getDomSet(__prev))  // Possible "x"
                 /**
                  * Frontier y of x:
                  *  1. x dominates one predecessor of y.
@@ -106,8 +106,8 @@ void dominantMaker::iterate(block *__entry) {
     std::vector <block *> __tmp = rpo;
     std::sort(__tmp.begin(), __tmp.end());
     for (auto __p : rpo | std::views::drop(1))
-        getDom(__p) = __tmp;
-    getDom(__entry) = {__entry};
+        getDomSet(__p) = __tmp;
+    getDomSet(__entry) = {__entry};
 
     bool __changed;
     do {
@@ -121,12 +121,12 @@ bool dominantMaker::update(block *__node) {
     runtime_assert(__node->prev.size() > 0, "wtf?");
     auto __beg = __node->prev.begin();
     auto __end = __node->prev.end();
-    std::vector <block *> __dom = getDom(*__beg);
+    std::vector <block *> __dom = getDomSet(*__beg);
     std::vector <block *> __tmp;
 
     /* Intersect the dominator of all predecessors. */
     for (auto *__p : std::span {__beg + 1, __end}) {
-        auto &__cur = getDom(__p);
+        auto &__cur = getDomSet(__p);
         std::set_intersection(
             __dom.begin(), __dom.end(),
             __cur.begin(), __cur.end(),
@@ -139,8 +139,8 @@ bool dominantMaker::update(block *__node) {
     if (__iter == __dom.end() || *__iter != __node)
         __dom.insert(__iter, __node);
 
-    if (__dom != getDom(__node)) {
-        return getDom(__node) = std::move(__dom), true;
+    if (__dom != getDomSet(__node)) {
+        return getDomSet(__node) = std::move(__dom), true;
     } else {
         return false;
     }
@@ -154,7 +154,7 @@ void dominantMaker::removeDummy(function *__func) {
     for (auto &__p : __func->data) {
         __erase(__p->next);
         __erase(__p->prev);
-        __erase(getDom(__p));
+        __erase(getDomSet(__p));
     }
     __erase(rpo);
 }

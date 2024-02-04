@@ -29,9 +29,22 @@ static struct {
 
 } optimize_info;
 
-void optimizer::init(int argc, char **argv) {
-    // TODO: Complete parsing arguments.
+
+static void DoNotOptimize(IR::IRbuilder *ctx) {
+    for (auto &__func : ctx->global_functions) {
+        initEdge(&__func);
+        IR::unreachableRemover { &__func };
+    }
 }
+
+static void DoOptimize(IR::IRbuilder *ctx) {
+    auto &functions = ctx->global_functions;
+    for (auto &__func : functions) {
+        IR::mem2regPass { &__func };
+        IR::DeadCodeEliminator { &__func };
+    }
+}
+
 
 void optimizer::optimize_AST(AST::ASTbuilder *ctx) {
     AST::constantFolder { ctx };
@@ -39,25 +52,16 @@ void optimizer::optimize_AST(AST::ASTbuilder *ctx) {
 
 void optimizer::optimize_IR(IR::IRbuilder *ctx) {
     /* No optimization case. */
-    if (optimize_info.level == 0) {
-        for (auto &__func : ctx->global_functions) {
-            initEdge(&__func);
-            IR::unreachableRemover { &__func };
-        } return;
-    }
-
-    /* Normal optimization pass. */
-    auto &functions = ctx->global_functions;
-    for (auto &__func : functions) {
-        IR::mem2regPass { &__func };
-        IR::DeadCodeEliminator { &__func };
-
-
-
-    }
-
+    optimize_info.level == 0 ? DoNotOptimize(ctx) : DoOptimize(ctx);
     std::cout << ctx->IRtree();
 }
+
+
+void optimizer::init(int argc, char **argv) {
+
+
+}
+
 
 
 } // namespace dark
