@@ -1,14 +1,13 @@
 #pragma once
+#include "queue.h"
 #include "IRbase.h"
-#include <queue>
-#include <unordered_set>
 
 namespace dark::IR {
 
 struct DeadCodeEliminator {
-    std::unordered_set <statement *> effectSet;
-    std::queue <statement *> workList;
     DeadCodeEliminator(function *);
+  private:
+    work_queue <statement *> workList;
 };
 
 } // namespace dark::IR
