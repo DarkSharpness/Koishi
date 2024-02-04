@@ -182,6 +182,10 @@ inline void visitBlock(block *__block, _Rule &&__rule) {
     __rule(__block->flow);
 }
 
+/**
+ * @brief A custom visitor for IRblock.
+ * @tparam _Rule Rule to stay.
+ */
 template <typename _Rule>
 inline void updateBlock(block *__block, _Rule &&__rule) {
     auto &&__range1 = __block->phi | __rule;
@@ -191,13 +195,7 @@ inline void updateBlock(block *__block, _Rule &&__rule) {
     auto &&__range0 = __block->data | __rule;
     auto __first0 = __block->data.begin();
     __block->data.resize(std::ranges::copy(__range0, __first0).out - __first0);
-
-    
-
-
 }
-
-
 
 
 } // namespace dark::IR
