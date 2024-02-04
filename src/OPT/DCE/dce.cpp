@@ -10,10 +10,10 @@ DeadCodeEliminator::DeadCodeEliminator(function *__func) {
     if (__func->is_unreachable()) return;
 
     auto &&__collect_effective = [this](statement *__stmt) -> void { 
-        if (auto *__call = __stmt->as <call_stmt> ())
+        if (auto *__call = __stmt->as <call_stmt> ()) {
             if (__call->func->is_side_effective())
                 workList.push(__stmt);
-        else if (__stmt->as <store_stmt> ()
+        } else if (__stmt->as <store_stmt> ()
                 || __stmt->as <flow_statement> ())
             workList.push(__stmt);
     };
@@ -26,7 +26,8 @@ DeadCodeEliminator::DeadCodeEliminator(function *__func) {
 
     auto &&__leave_effective = std::views::filter(
         [this](statement *__stmt) -> bool { return workList.contains(__stmt); });
-    for (auto *__block : __func->data) updateBlock(__block, __leave_effective);
+    for (auto *__block : __func->data)
+        updateBlock(__block, __leave_effective);
 }
 
 

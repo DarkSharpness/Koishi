@@ -17,7 +17,12 @@ struct dominantMaker {
     struct _Info_t {
         std::vector <block *> dom;  // Dominator
         std::vector <block *> fro;  // Dominance frontier
-        block *idom = nullptr;      // Immediate dominator
+        void set_idom(block *__node) {  get_storage()[0] = __node;  }
+        block *get_idom()            {  return get_storage()[0];    }
+        void set_fail(block *__node) {  get_storage()[1] = __node;  }
+        block *get_fail()            {  return get_storage()[1];    }
+      private:
+        block **get_storage() { return reinterpret_cast <block **> (&fro); }
     };
 
     std::vector         <block *> rpo;
