@@ -41,7 +41,9 @@ void unreachableRemover::updatePhi(block *__p) {
 void unreachableRemover::removeBlock(function *__func) {
     auto &&__range = __func->data |
         std::views::filter([this](block *__p) -> bool {
-            return visit0.count(__p) && visit1.count(__p);
+            bool __tmp = visit0.count(__p) && visit1.count(__p);
+            if (!__tmp) IRpool::deallocate(__p);
+            return __tmp;
         });
     auto __first = __func->data.begin();
     __func->data.resize(std::ranges::copy(__range, __first).out - __first);

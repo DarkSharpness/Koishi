@@ -177,6 +177,12 @@ block *IRpool::allocate <block> () {
 }
 void IRpool::deallocate(block *__blk) {
     using namespace detail;
+    __blk->data.clear();
+    __blk->phi.clear();
+    __blk->prev.clear();
+    __blk->next.clear();
+    __blk->comments.clear();
+    __blk->flow = nullptr;
     block_stack.push_back(__blk);
 }
 
