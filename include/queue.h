@@ -12,6 +12,7 @@ struct work_queue : public std::queue <_Tp> , protected std::unordered_set <_Tp>
     using _Container_t  = typename _List_t::container_type;
 
   public:
+    _Set_t & set() { return *this; }
     /* Return the underlying container. */
     _Container_t & container() { return _List_t::c; }
     /* Add an element to the queue if it is not already set. */
@@ -28,6 +29,7 @@ struct work_queue : public std::queue <_Tp> , protected std::unordered_set <_Tp>
     std::size_t size() const { return _List_t::size(); }
     bool empty() const { return _List_t::empty(); }
     bool contains(const _Tp & __t) const { return _Set_t::contains(__t); }
+    void clear() { _List_t::clear(); _Set_t::clear(); }
 };
 
 
