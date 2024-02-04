@@ -145,12 +145,12 @@ void IRbuilder::set_invalid() { is_ready = false; }
 void IRbuilder::add_block(block *__blk) { top->data.push_back(top_block = __blk); }
 /* End a block with a given flow. */
 void IRbuilder::end_block(flow_statement *__stmt) {
-    if (top_block != &dummy_block) {
+    if (top_block != &dummy) {
         runtime_assert(top_block->flow == nullptr, "No flow is available.");        
         top_block->flow = __stmt;
-        top_block = &dummy_block;
+        top_block = &dummy;
     } else { // Dummy block data is useless.
-        dummy_block.data.clear();
+        dummy.data.clear();
     }
 }
 

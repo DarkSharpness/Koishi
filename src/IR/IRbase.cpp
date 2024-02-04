@@ -81,6 +81,7 @@ namespace dark::IR {
 void IRpool::init_pool() {
     static bool __flag {};  // Avoid init twice.
     if (__flag) return;
+    __dummy__.name  = ".$dummy";
     __flag      = true;
     __null__    = create_pointer(nullptr);
     __zero__    = create_integer(0);

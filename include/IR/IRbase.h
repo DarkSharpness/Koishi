@@ -239,6 +239,7 @@ struct IRpool {
     using _Function_Ptr = function *;
 
   public:
+    inline static block             __dummy__   {};
     inline static pointer_constant *__null__    {};
     inline static integer_constant *__zero__    {};
     inline static integer_constant *__pos1__    {};

@@ -65,7 +65,7 @@ struct IRbuilder : AST::ASTbase {
      * When we are inserting unreachable code, we need to insert a dummy block
      * to avoid the situation that top_block is nullptr.
     */
-    inline static block dummy_block {};
+    inline static constexpr block &dummy = IRpool::__dummy__;
 
   public:
     IRbuilder(AST::ASTbuilder *, AST::scope *);

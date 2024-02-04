@@ -6,7 +6,7 @@ namespace dark::IR {
 
 struct dominantMaker {
   protected:
-    inline static block dummy {};
+    inline static constexpr block &dummy = IRpool::__dummy__;
     void makeRpo(block *);
     void initEdge(function *);
     void iterate(block *);
@@ -17,6 +17,7 @@ struct dominantMaker {
     struct _Info_t {
         std::vector <block *> dom;  // Dominator
         std::vector <block *> fro;  // Dominance frontier
+        block *idom = nullptr;      // Immediate dominator
     };
 
     std::vector         <block *> rpo;
@@ -26,14 +27,15 @@ struct dominantMaker {
     static void clean(function *);
 };
 
-inline std::vector <block *> &getDom(block *__blk) {
+inline auto &getDomInfo(block *__blk) {
     using _Info_t = dominantMaker::_Info_t;
-    return __blk->get_impl_ptr <_Info_t> ()->dom;
+    return *__blk->get_impl_ptr <_Info_t> ();
 }
-
+inline std::vector <block *> &getDomSet(block *__blk) {
+    return getDomInfo(__blk).dom;
+}
 inline std::vector <block *> &getFrontier(block *__blk) {
-    using _Info_t = dominantMaker::_Info_t;
-    return __blk->get_impl_ptr <_Info_t> ()->fro;
+    return getDomInfo(__blk).fro;
 }
 
 
