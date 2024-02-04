@@ -118,10 +118,12 @@ struct pointer_constant final : literal {
 /* IR visitor part. */
 namespace dark::IR {
 
+struct block;
+struct function;
 struct IRbase;
 struct IRbuilder;
 
-struct node {
+struct node : hidden_impl {
     using _Def_List = std::vector <definition *>;
     /* Short form for dynamic cast. */
     template <typename _Tp> requires std::is_base_of_v <node, _Tp>

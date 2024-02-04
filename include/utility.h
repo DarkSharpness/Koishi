@@ -60,17 +60,17 @@ struct hidden_impl {
     void *impl {};
   public:
     /* Set the hidden implement pointer. */
-    void set_impl_ptr(void *__impl) noexcept { impl = __impl; }
+    void set_ptr(void *__impl) noexcept { impl = __impl; }
     /* Set the hidden implement value. */
     template <class T> requires detail::__value_hidable <T>
-    void set_impl_val(T __val) noexcept { get_impl_val <T> () = __val; }
+    void set_val(T __val) noexcept { get_val <T> () = __val; }
 
     /* Get the hidden implement pointer. */
     template <class T = void>
-    T *get_impl_ptr() const noexcept { return static_cast <T *> (impl); }
+    T *get_ptr() const noexcept { return static_cast <T *> (impl); }
     /* Get the hidden implement value. */
     template <class T> requires detail::__value_hidable <T>
-    T &get_impl_val() noexcept { return *(reinterpret_cast <T *> (&impl)); }
+    T &get_val() noexcept { return *(reinterpret_cast <T *> (&impl)); }
 };
 
 /* A central allocator that is intented to avoid memleak. */

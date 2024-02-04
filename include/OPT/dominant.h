@@ -29,7 +29,7 @@ struct dominantMaker {
 
 inline auto &getDomInfo(block *__blk) {
     using _Info_t = dominantMaker::_Info_t;
-    return *__blk->get_impl_ptr <_Info_t> ();
+    return *__blk->get_ptr <_Info_t> ();
 }
 inline std::vector <block *> &getDomSet(block *__blk) {
     return getDomInfo(__blk).dom;

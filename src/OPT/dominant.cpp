@@ -37,7 +37,7 @@ void dominantMaker::initEdge(function *__func) {
         __p->next.clear(), __p->prev.clear();
 
     dummy.next.clear(), dummy.prev.clear();
-    dummy.set_impl_ptr(new _Info_t);
+    dummy.set_ptr(new _Info_t);
 
     for (auto &__p : __func->data) {
         if (auto *__br = dynamic_cast <branch_stmt *> (__p->flow)) {
@@ -49,7 +49,7 @@ void dominantMaker::initEdge(function *__func) {
         else if (dynamic_cast <return_stmt *> (__p->flow))
             __link(__p, &dummy);
 
-        __p->set_impl_ptr(new _Info_t);
+        __p->set_ptr(new _Info_t);
     }
 }
 
@@ -70,8 +70,8 @@ dominantMaker::dominantMaker(function *__func, bool __is_post) {
     /* Post dominant: Deal with that in a similar manner. */
     if (__is_post) {
         __entry = &dummy;
+        dummy.next = std::move(dummy.prev);
         for (auto &__p : __func->data) std::swap(__p->next, __p->prev);
-        std::swap(dummy.next, dummy.prev);
     }
 
     makeRpo(__entry);
@@ -96,6 +96,9 @@ dominantMaker::dominantMaker(function *__func, bool __is_post) {
         auto &__set = getFrontier(__node);
         std::sort(__set.begin(), __set.end());
         __set.resize(std::unique(__set.begin(), __set.end()) - __set.begin());
+    }
+    if (__is_post) {
+        for (auto &__p : __func->data) std::swap(__p->next, __p->prev);
     }
 }
 
@@ -161,11 +164,11 @@ void dominantMaker::removeDummy(function *__func) {
 
 void dominantMaker::clean(function *__func) {
     for (auto &__p : __func->data) {
-        delete __p->get_impl_ptr <_Info_t>();
-        __p->set_impl_ptr(nullptr);
+        delete __p->get_ptr <_Info_t>();
+        __p->set_ptr(nullptr);
     }
-    delete dummy.get_impl_ptr <_Info_t>();
-    dummy.set_impl_ptr(nullptr);
+    delete dummy.get_ptr <_Info_t>();
+    dummy.set_ptr(nullptr);
 }
 
 } // namespace dark::IR
