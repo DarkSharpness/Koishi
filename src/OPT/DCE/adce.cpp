@@ -93,19 +93,22 @@ void AggressiveElimination::markEffect(block *__blk) {
 
 void AggressiveElimination::spreadEffect() {
     auto &&__spread_stmt = [this](statement *__stmt) -> void {
-        blockList.push(__stmt->get_ptr <block> ());
+        auto *__block = __stmt->get_ptr <block> ();
+        if (auto *__phi = __stmt->as <phi_stmt> ())
+            for (auto __prev : __block->prev)
+                blockList.push(__prev);
+
+        blockList.push(__block);
         for (auto __use : __stmt->get_use())
             if (auto __tmp = __use->as <temporary> ())
                 stmtList.push(__tmp->def);
     };
     auto &&__spread_block = [this](block *__node) -> void {
-        for (auto __prev : __node->prev)
-            if (__prev->flow->as <jump_stmt> ())
-                blockList.push(__prev);
-        for (auto __prev : getFrontier(__node))
-            if (auto *__br = __prev->flow->as <branch_stmt> ())
-                if (auto *__temp = __br->cond->as <temporary> ())
-                    stmtList.push(__temp->def);
+        for (auto __prev : getFrontier(__node)) {
+            auto *__br = __prev->flow->as <branch_stmt> ();
+            runtime_assert(__br, "Invalid block flow.");
+            stmtList.push(__br);         
+        }
     };
 
     do {
