@@ -1,5 +1,7 @@
 # About DarkSharpness Mx Compiler Project
 
+A compiler, written in C++, which can Mx language source code to RISCV assembly.
+
 ## Frontend
 
 We use anltr4 to generate the lexer and parser for the mx language. The grammar is defined in `src/antlr4/MxLexer.g4` and `src/antlr4/MxParser.g4`.
