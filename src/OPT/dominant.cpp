@@ -72,9 +72,8 @@ void dominantMaker::makePostOrder(block *__entry) {
 }
 
 dominantMaker::dominantMaker(function *__func, bool __is_post) {
-    initEdge(__func);
-    unreachableRemover {__func};
     if (__func->is_unreachable()) return;
+    initEdge(__func);
 
     block *__entry = __func->data.front();
 

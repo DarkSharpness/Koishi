@@ -26,6 +26,8 @@ static void DoNotOptimize(IR::IRbuilder *ctx) {
 static void DoOptimize(IR::IRbuilder *ctx) {
     auto &functions = ctx->global_functions;
     for (auto &__func : functions) {
+        IR::CFGbuilder {&__func};
+        IR::unreachableRemover { &__func };
         IR::mem2regPass { &__func };
         IR::DeadCodeEliminator { &__func };
         IR::AggressiveElimination { &__func };
