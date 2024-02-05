@@ -6,6 +6,8 @@
 #include <climits>      // CHAR_BIT
 #include <cstdint>      // std::uint64_t
 
+namespace dark {
+
 struct dynamic_bitset {
   public:
     using _Bitset = dynamic_bitset;
@@ -39,6 +41,8 @@ struct dynamic_bitset {
     }
 
   public:
+    inline static constexpr std::size_t npos = -1;
+
     dynamic_bitset() noexcept = default;
     ~dynamic_bitset() noexcept = default;
 
@@ -48,7 +52,7 @@ struct dynamic_bitset {
     dynamic_bitset(dynamic_bitset &&) noexcept = default;
     dynamic_bitset &operator = (dynamic_bitset &&) noexcept = default;
 
-    dynamic_bitset(std::size_t n) : data(round_up(n)), length(n) {}
+    explicit dynamic_bitset(std::size_t n) : data(round_up(n)), length(n) {}
 
     explicit dynamic_bitset(std::string_view str) : dynamic_bitset(str.size()) {
         for (std::size_t i = 0 ; i != str.size() ; ++i)
@@ -206,4 +210,23 @@ struct dynamic_bitset {
         for (auto __word : data) ret += std::popcount(__word);
         return ret;
     }
+
+    std::size_t find_from(std::size_t __n) {
+        if (__n >= length) return npos;
+        const std::size_t div = __n / Bits;
+        const std::size_t mod = __n % Bits;
+        if (auto __word = data[div] >> mod)
+            return div * Bits + std::countr_zero(__word) + mod;
+        for (std::size_t i = div + 1 ; i < data.size() ; ++i)
+            if (data[i]) return i * Bits + std::countr_zero(data[i]);
+        return npos;
+    }
+
+    std::size_t find_first() {
+        for (std::size_t i = 0; i < data.size() ; ++i)
+            if (data[i]) return i * Bits + std::countr_zero(data[i]);
+        return npos;    
+    }
 };
+
+} // namespace dark
