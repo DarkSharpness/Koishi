@@ -995,9 +995,9 @@ void IRbuilder::visitNewArray(typeinfo __type, std::vector <definition *> __args
 
     auto *__cond = top->create_temporary({ bool_type::ptr() }, "cmp");
     top_block->push_back(IRpool::allocate <compare_stmt> (
-        __cond, __iter, IRpool::__null__, compare_stmt::NE));
+        __cond, __iter, __data, compare_stmt::NE));
 
-    end_block(IRpool::allocate <branch_stmt> (__cond, _Blk_2 { __loop_body, __loop_exit }));
+    end_block(IRpool::allocate <branch_stmt> (__cond, _Blk_2 { __loop_exit, __loop_body }));
 
     /* Exit of the loop. */
     add_block(__loop_exit);
