@@ -7,11 +7,12 @@ namespace dark::IR {
 struct dominantMaker {
   protected:
     inline static constexpr block &dummy = IRpool::__dummy__;
-    void makeRpo(block *);
-    void initEdge(function *);
+    static void initEdge(function *);
+    void makePostOrder(block *);
     void iterate(block *);
     bool update(block *);
-    void removeDummy(function *);
+    void buildFrontier();
+    void removeDummy();
 
   public:
     struct _Info_t {

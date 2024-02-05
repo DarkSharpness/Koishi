@@ -1,3 +1,4 @@
+#include "bitset.h"
 #include "IRnode.h"
 #include "dominant.h"
 #include "DCE/unreachable.h"
@@ -7,110 +8,110 @@
 
 namespace dark::IR {
 
+using bitset = dark::dynamic_bitset;
 
-static void __printDebug(block *__block) {
-    std::cerr << __block->name << ":";
-    std::cerr << "\n\tFrontier:\t";
-    for (auto __p : getFrontier(__block))
-        std::cerr << __p->name << " ";
-    std::cerr << "\n\tDomed by:\t";
-    for (auto __p : getDomSet(__block))
-        std::cerr << __p->name << " ";
-    std::cerr << '\n';
+struct domNode {
+    bitset dom;     // Dominator set
+    bitset fro;     // Frontier set
+    std::size_t id; // Unique id
+};
+
+/* Local method. */
+static domNode &getDomNode(block *__p) { return *__p->get_ptr <domNode>(); }
+
+/* Work out all the __x: __x has frontier __node */
+static void initFrontier(block *__node, std::size_t __id, std::size_t __n) {
+    bool __flag {};
+    bitset __fro { __n };
+    const auto &__info = getDomNode(__node);
+    for (auto __prev : __node->prev) {
+        auto __tmp = getDomNode(__prev).dom;
+        __flag |= __tmp[__id];
+        __tmp &= __info.dom;
+        __tmp ^= getDomNode(__prev).dom;
+        __fro |= __tmp;
+    }
+    __fro[__id] = __flag;
+    getDomNode(__node).fro = std::move(__fro);
 }
+
 
 /**
- * @return Whether x dominates y.
+ * @brief Initialize the edge of the function.
+ * Specially, a dummy node is added to link all the return statements.
  */
-static bool __isDom(block *__x, block *__y) {
-    auto &__dom = getDomSet(__y);
-    return std::binary_search(__dom.begin(), __dom.end(), __x);
-}
-
-static void __link(block *__prev, block *__next) {
-    __prev->next.push_back(__next);
-    __next->prev.push_back(__prev);
-}
-
 void dominantMaker::initEdge(function *__func) {
+    constexpr auto __link = [](block *__prev, block *__next) {
+        __prev->next.push_back(__next);
+        __next->prev.push_back(__prev);
+    };
+
     for (auto &__p : __func->data)
         __p->next.clear(), __p->prev.clear();
 
     dummy.next.clear(), dummy.prev.clear();
-    dummy.set_ptr(new _Info_t);
+    dummy.set_ptr(new domNode);
 
     for (auto &__p : __func->data) {
-        if (auto *__br = dynamic_cast <branch_stmt *> (__p->flow)) {
+        if (auto *__br = __p->flow->as <branch_stmt>()) {
             __link(__p, __br->branch[0]);
             __link(__p, __br->branch[1]);
         }
-        else if (auto *__jump = dynamic_cast <jump_stmt *> (__p->flow))
+        else if (auto *__jump = __p->flow->as <jump_stmt>())
             __link(__p, __jump->dest);
-        else if (dynamic_cast <return_stmt *> (__p->flow))
+        else if (__p->flow->as <return_stmt>())
             __link(__p, &dummy);
-
-        __p->set_ptr(new _Info_t);
+        __p->set_ptr(new domNode);
     }
 }
 
-void dominantMaker::makeRpo(block *__entry) {
+void dominantMaker::makePostOrder(block *__entry) {
     if (!visited.insert(__entry).second) return;
-    for (auto *__p : __entry->next) makeRpo(__p);
+    for (auto *__p : __entry->next) makePostOrder(__p);
     rpo.push_back(__entry); // Reverse post order
 }
 
 dominantMaker::dominantMaker(function *__func, bool __is_post) {
-    initEdge(__func); dummy.name = ".dummy";
-
+    initEdge(__func);
     unreachableRemover {__func};
     if (__func->is_unreachable()) return;
 
     block *__entry = __func->data.front();
 
-    /* Post dominant: Deal with that in a similar manner. */
     if (__is_post) {
+        /* Post dominant: Deal with that in a similar manner. */
         __entry = &dummy;
         dummy.next = std::move(dummy.prev);
         for (auto &__p : __func->data) std::swap(__p->next, __p->prev);
     }
 
-    makeRpo(__entry);
+    makePostOrder(__entry);
     std::reverse(rpo.begin(), rpo.end());
     iterate(__entry);
 
-    removeDummy(__func);
-    for (auto __node : rpo) // Enumerate "y"
-        for (auto __prev : __node->prev)
-            for (auto __temp : getDomSet(__prev))  // Possible "x"
-                /**
-                 * Frontier y of x:
-                 *  1. x dominates one predecessor of y.
-                 *      <=> x is in domSet of one predecessor of y.
-                 *  2. x don't dominate y , x = y
-                 *      <=> x = y , or x is not in domSet of y.
-                */
-                if (__node == __temp || !__isDom(__temp, __node))
-                    getFrontier(__temp).push_back(__node);
-
-    for (auto __node : rpo) {
-        auto &__set = getFrontier(__node);
-        std::sort(__set.begin(), __set.end());
-        __set.resize(std::unique(__set.begin(), __set.end()) - __set.begin());
-    }
+    buildFrontier();
     if (__is_post) {
+        /* Post dominant: Swap back prev and next. */
         for (auto &__p : __func->data) std::swap(__p->next, __p->prev);
     }
+    removeDummy();
 }
 
 /**
  * Building the dominator tree iteratively. 
  */
 void dominantMaker::iterate(block *__entry) {
-    std::vector <block *> __tmp = rpo;
-    std::sort(__tmp.begin(), __tmp.end());
+    std::size_t __id = 0;
+    for (auto __p : rpo) getDomNode(__p).id = __id++;
+
+    bitset __all { rpo.size() };
+    __all.set(); // Set all bits to 1
+
     for (auto __p : rpo | std::views::drop(1))
-        getDomSet(__p) = __tmp;
-    getDomSet(__entry) = {__entry};
+        getDomNode(__p).dom = __all;
+    /* Entry is special. */
+    getDomNode(__entry).dom.resize(rpo.size());
+    getDomNode(__entry).dom.set(0);
 
     bool __changed;
     do {
@@ -124,40 +125,28 @@ bool dominantMaker::update(block *__node) {
     runtime_assert(__node->prev.size() > 0, "wtf?");
     auto __beg = __node->prev.begin();
     auto __end = __node->prev.end();
-    std::vector <block *> __dom = getDomSet(*__beg);
-    std::vector <block *> __tmp;
+    // Intersect all dominator sets of predecessors.
+    auto __dom = getDomNode(*__beg).dom;
+    for (auto __prev : std::span { __beg + 1, __end })
+        __dom &= getDomNode(__prev).dom;
+    
+    auto &__info = getDomNode(__node);
+    __dom.set(__info.id);
 
-    /* Intersect the dominator of all predecessors. */
-    for (auto *__p : std::span {__beg + 1, __end}) {
-        auto &__cur = getDomSet(__p);
-        std::set_intersection(
-            __dom.begin(), __dom.end(),
-            __cur.begin(), __cur.end(),
-            std::back_inserter(__tmp)
-        );
-        std::swap(__tmp, __dom); __tmp.clear();
-    }
-
-    auto __iter = std::lower_bound(__dom.begin(), __dom.end(), __node);
-    if (__iter == __dom.end() || *__iter != __node)
-        __dom.insert(__iter, __node);
-
-    if (__dom != getDomSet(__node)) {
-        return getDomSet(__node) = std::move(__dom), true;
-    } else {
-        return false;
-    }
+    if (__dom == __info.dom) return false;
+    return __info.dom = std::move(__dom), true;
 }
 
-void dominantMaker::removeDummy(function *__func) {
+void dominantMaker::removeDummy() {
     constexpr auto __erase = [](std::vector <block *> &__vec) {
         auto __iter = std::find(__vec.rbegin(), __vec.rend(), &dummy);
         if (__iter != __vec.rend()) __vec.erase(__iter.base() - 1);
     };
-    for (auto &__p : __func->data) {
+    for (auto *__p : rpo) {
         __erase(__p->next);
         __erase(__p->prev);
         __erase(getDomSet(__p));
+        __erase(getFrontier(__p));
     }
     __erase(rpo);
 }
@@ -170,5 +159,34 @@ void dominantMaker::clean(function *__func) {
     delete dummy.get_ptr <_Info_t>();
     dummy.set_ptr(nullptr);
 }
+
+void dominantMaker::buildFrontier() {
+    std::size_t __id = 0;
+    for (auto __node : rpo) initFrontier(__node, __id++, rpo.size());
+
+    __id = 0;
+    /* Translate to normal node. */
+    std::vector <_Info_t> __new (rpo.size());
+    for (auto __node : rpo) {
+        auto &__info = getDomNode(__node);
+        std::size_t __n = __info.fro.find_first();
+        while (__n != bitset::npos) {
+            __new[__n].fro.push_back(__node);
+            __n = __info.fro.find_from(__n + 1);
+        }
+        std::size_t __m = __info.dom.find_first();
+        while (__m != bitset::npos) {
+            __new[__id].dom.push_back(rpo[__m]);
+            __m = __info.dom.find_from(__m + 1);
+        }
+        ++__id;
+        delete &__info;
+    }
+
+    __id = 0;
+    for (auto __node : rpo)
+        __node->set_ptr(new _Info_t {std::move(__new[__id++])});
+}
+
 
 } // namespace dark::IR
