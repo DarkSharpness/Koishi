@@ -9,22 +9,17 @@ __String_substring__:                   # @__String_substring__
 # %bb.0:
 	addi	sp, sp, -16
 	sw	ra, 12(sp)                      # 4-byte Folded Spill
-	sw	s0, 8(sp)                       # 4-byte Folded Spill
-	sw	s1, 4(sp)                       # 4-byte Folded Spill
-	sw	s2, 0(sp)                       # 4-byte Folded Spill
-	mv	s0, a1
-	mv	s2, a0
-	sub	s1, a2, a1
-	addi	a0, s1, 1
+	sub	a2, a2, a1
+	add	a1, a0, a1
+	sw	a2, 8(sp)
+	sw	a1, 4(sp)
+	addi	a0, a2, 1
 	call	malloc
-	add	a2, a0, s1
-	add	a1, s2, s0
-	sb	zero, 0(a2)
-	mv	a2, s1
 	lw	ra, 12(sp)                      # 4-byte Folded Reload
-	lw	s0, 8(sp)                       # 4-byte Folded Reload
-	lw	s1, 4(sp)                       # 4-byte Folded Reload
-	lw	s2, 0(sp)                       # 4-byte Folded Reload
+	lw	a2, 8(sp)
+	lw	a1, 4(sp)
+	add	a4, a2, a0
+	sb	zero, 0(a4)
 	addi	sp, sp, 16
 	tail	memcpy
 .Lfunc_end0:
@@ -145,7 +140,7 @@ __toString__:                           # @__toString__
 	call	malloc
 	lw	a2, 8(sp)
 	lui	a1, %hi(.L.str)
-	addi	a1, a0, %lo(.L.str)
+	addi	a1, a1, %lo(.L.str)
 	sw	a0, 8(sp)		# sp[8] = str
 	call	sprintf
 	lw	a0, 8(sp)
