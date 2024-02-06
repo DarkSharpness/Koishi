@@ -1,7 +1,6 @@
 #include "IRnode.h"
 #include "DCE/adce.h"
 #include "dominant.h"
-#include "CFGbuilder.h"
 #include "DCE/unreachable.h"
 #include <ranges>
 
@@ -72,7 +71,6 @@ AggressiveElimination::AggressiveElimination(function *__func) {
     for (auto *__node : __func->data) resetFrontier(getDomInfo(__node));
 
     __dom.clean(__func);
-    CFGbuilder {__func};
     unreachableRemover {__func};
 }
 
