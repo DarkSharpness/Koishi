@@ -74,7 +74,6 @@ AggressiveElimination::AggressiveElimination(function *__func) {
     __dom.clean(__func);
     CFGbuilder {__func};
     unreachableRemover {__func};
-    CFGbuilder {__func};
 }
 
 void AggressiveElimination::markEffect(block *__blk) {

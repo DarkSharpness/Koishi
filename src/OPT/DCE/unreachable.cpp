@@ -1,5 +1,6 @@
 #include "DCE/unreachable.h"
 #include "IRnode.h"
+#include "CFGbuilder.h"
 #include <ranges>
 #include <algorithm>
 
@@ -7,7 +8,11 @@ namespace dark::IR {
 
 unreachableRemover::unreachableRemover(function *__func) {
     if (__func->is_unreachable()) return;
+    /* Set UB block as unreachable. */
+    for (auto *__p : __func->data) markUB(__p);
+    CFGbuilder {__func};
 
+    /* Dfs bidirectionally */
     dfs0(__func->data[0]);
     for (auto *__p : __func->data)
         if (__p->flow->as <return_stmt> ()) dfs1(__p);
@@ -15,6 +20,10 @@ unreachableRemover::unreachableRemover(function *__func) {
     removeBlock(__func);
 
     for (auto *__p : __func->data) updatePhi(__p);
+    for (auto *__p : __func->data) updateCFG(__p);
+
+    /* The CFG is broken now. */
+    CFGbuilder {__func};
 }
 
 void unreachableRemover::dfs0(block *__p) {
@@ -47,6 +56,56 @@ void unreachableRemover::removeBlock(function *__func) {
         });
     auto __first = __func->data.begin();
     __func->data.resize(std::ranges::copy(__range, __first).out - __first);
+}
+
+void unreachableRemover::markUB(block *__p) {
+    // Hard undefined behavior:
+    // - Load/Store of null pointer
+    // - Division by zero
+    // - Shift by negative value
+    // - Signed integer overflow
+    auto &&__criteria = [](statement *__node) -> bool {
+        if (auto *__load = __node->as <load_stmt> ()) {
+            if (__load->addr == IRpool::__null__) return true;
+            if (__load->addr->as <undefined> ())  return true;
+        } else if (auto *__store = __node->as <store_stmt> ()) {
+            if (__store->addr == IRpool::__null__) return true;
+            if (__store->addr->as <undefined> ())  return true;
+        } else if (auto *__get = __node->as <get_stmt> ()) {
+            if (__get->addr == IRpool::__null__) return true;
+            if (__get->addr->as <undefined> ())  return true;
+        } else if (auto *__bin = __node->as <binary_stmt> ()) {
+            switch (__bin->op) {
+                case __bin->DIV: case __bin->MOD:
+                    if (__bin->rval == IRpool::__zero__) { return true; } break;
+                case __bin->SHL: case __bin->SHR:
+                    if (auto *__val = __bin->rval->as <integer_constant> ())
+                        if (__val->value < 0) { return true; }
+                    break;
+            }
+        }
+        return false;
+    };
+
+    for (auto __node : __p->data) {
+        if (__criteria(__node)) {
+            __p->phi.clear();
+            __p->data.clear();
+            __p->flow = IRpool::allocate <unreachable_stmt> ();
+            return;
+        }
+    }
+}
+
+void unreachableRemover::updateCFG(block *__p) {
+    if (auto *__br = __p->flow->as <branch_stmt> ()) {
+        if (__br->branch[0] == __br->branch[1])
+            __p->flow = IRpool::allocate <jump_stmt> (__br->branch[0]);
+        else if (!visit0.count(__br->branch[0]) || !visit1.count(__br->branch[0]))
+            __p->flow = IRpool::allocate <jump_stmt> (__br->branch[1]);
+        else if (!visit0.count(__br->branch[1]) || !visit1.count(__br->branch[1]))
+            __p->flow = IRpool::allocate <jump_stmt> (__br->branch[0]);
+    }
 }
 
 } // namespace dark::IR

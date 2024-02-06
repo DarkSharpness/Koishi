@@ -19,7 +19,6 @@ static struct {
 
 static void DoNotOptimize(IR::IRbuilder *ctx) {
     for (auto &__func : ctx->global_functions) {
-        IR::CFGbuilder {&__func};
         IR::unreachableRemover { &__func };
     }
 }
@@ -27,11 +26,12 @@ static void DoNotOptimize(IR::IRbuilder *ctx) {
 static void DoOptimize(IR::IRbuilder *ctx) {
     auto &functions = ctx->global_functions;
     for (auto &__func : functions) {
-        IR::CFGbuilder {&__func};
         IR::unreachableRemover { &__func };
         IR::mem2regPass { &__func };
         IR::DeadCodeEliminator { &__func };
         IR::ConstantPropagatior { &__func, true };
+        IR::dominantMaker::clean(&__func);
+        IR::unreachableRemover { &__func };
         IR::AggressiveElimination { &__func };
     }
 }

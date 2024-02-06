@@ -17,6 +17,8 @@ struct unreachableRemover {
 
     void dfs0(block *); // Depth First Search
     void dfs1(block *); // Reverse Depth First Search
+    void markUB(block *); // Find potentially unreachable blocks
+    void updateCFG(block *);    // Update CFG
     void updatePhi(block *);    // Remove useless phi branches
     void removeBlock(function *);   // Remove dead code
 };
