@@ -8,6 +8,7 @@
 #include "DCE/unreachable.h"
 #include "DCE/dce.h"
 #include "DCE/adce.h"
+#include "CP/sccp.h"
 
 namespace dark {
 
@@ -30,6 +31,7 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::unreachableRemover { &__func };
         IR::mem2regPass { &__func };
         IR::DeadCodeEliminator { &__func };
+        IR::ConstantPropagatior { &__func };
         IR::AggressiveElimination { &__func };
     }
 }
