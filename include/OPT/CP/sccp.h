@@ -6,7 +6,7 @@ namespace dark::IR {
 
 struct ConstantPropagatior {
   public:
-    ConstantPropagatior(function *);
+    ConstantPropagatior(function *, bool = false);
 
   private:
     /* Mapping from a temporary to its potential new value. */
@@ -40,6 +40,8 @@ struct ConstantPropagatior {
 
     std::queue <CFGinfo> CFGworklist;
     std::queue <SSAinfo> SSAworklist;
+
+    bool hasDomTree;
 
     definition *getValue(definition *);
     void initInfo(block *);

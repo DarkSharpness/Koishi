@@ -5,9 +5,10 @@ namespace dark::IR {
 struct ConstantCalculator : IRbase {
     using _List_t = std::vector <definition *>;
     definition *result {};
-    ConstantCalculator(node *, const _List_t &);
+    ConstantCalculator(node *, const _List_t &, bool = false);
   private:
     const _List_t &valueList;
+    bool hasDomTree;
     void visitCompare(compare_stmt *) override;
     void visitBinary(binary_stmt *) override;
     void visitJump(jump_stmt *) override;

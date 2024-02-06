@@ -1,6 +1,8 @@
 #include "CP/sccp.h"
 #include "CP/calc.h"
 #include "IRnode.h"
+#include "dominant.h"
+#include <algorithm>
 
 namespace dark::IR {
 
@@ -28,7 +30,8 @@ definition *ConstantPropagatior::getValue(definition *__def) {
     return defMap[__tmp].value ? : __def;
 }
 
-ConstantPropagatior::ConstantPropagatior(function *__func) {
+ConstantPropagatior::ConstantPropagatior(function *__func, bool __hasDom)
+: hasDomTree(__hasDom) {
     if (__func->is_unreachable()) return;
 
     for (auto __block : __func->data) initInfo(__block);
@@ -119,7 +122,7 @@ void ConstantPropagatior::visitStmt(statement *__stmt) {
 }
 
 void ConstantPropagatior::tryUpdate(statement *__stmt) {
-    auto *__new = ConstantCalculator {__stmt, valueList }.result;
+    auto *__new = ConstantCalculator {__stmt, valueList, hasDomTree}.result;
     auto *__def = __stmt->get_def();
     if (__new == __def) return;
 
@@ -129,8 +132,7 @@ void ConstantPropagatior::tryUpdate(statement *__stmt) {
 
     /* Update and push to worklist. */
     __info.value = __new;
-    for (auto __use : __info.useList)
-        SSAworklist.push(__use);
+    for (auto __use : __info.useList) SSAworklist.push(__use);
 }
 
 void ConstantPropagatior::visitBranch(branch_stmt *__stmt) {
@@ -150,6 +152,16 @@ void ConstantPropagatior::modifyValue(block *__block) {
     auto &&__operation = [this](statement *__node) -> void {
         for (auto __old : __node->get_use()) {
             auto __new = getValue(__old);
+            if (hasDomTree) {
+                /* Avoid invalid copy propogation. */
+                if (auto __new = __old->as <temporary> ()) {
+                    auto __from = __new->def->get_ptr <block> ();
+                    auto __to   = __node->get_ptr <block> ();
+                    auto &__dom = getDomSet(__to);
+                    if (!std::binary_search(__dom.begin(), __dom.end(), __from))
+                        continue;
+                }
+            }
             if (__new && __old != __new) __node->update(__old,__new);
         }
     };

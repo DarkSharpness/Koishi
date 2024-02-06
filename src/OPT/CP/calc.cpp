@@ -8,8 +8,8 @@ namespace dark::IR {
     __builtin_unreachable();
 }
 
-ConstantCalculator::ConstantCalculator(node *__stmt, const _List_t &__list)
-: valueList(__list) { visit(__stmt); }
+ConstantCalculator::ConstantCalculator(node *__stmt, const _List_t &__list, bool __hasDom)
+: valueList(__list), hasDomTree(__hasDom) { visit(__stmt); }
 
 void ConstantCalculator::visitCompare(compare_stmt *ctx) {
     runtime_assert(valueList.size() == 2, "Invalid argument length");
@@ -162,6 +162,8 @@ void ConstantCalculator::visitPhi(phi_stmt *ctx) {
         else if (__tmp != __use) return;
     }
 
+    /* This is on consideration of dominance relationship. */
+    if (!hasDomTree && __tmp->as <temporary> ()) return;
     if (!__tmp) __tmp = IRpool::create_undefined(__def->type);
     return setResult(__tmp);
 }
