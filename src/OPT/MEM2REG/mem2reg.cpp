@@ -52,7 +52,7 @@ mem2regPass::mem2regPass(function *__func) : top(__func) {
     auto __last = std::ranges::copy(
         __func->locals | std::views::filter(std::not_fn(__is_simple)), __first).out;
     __func->locals.resize(__last - __first);
-    dom.clean(__func);
+    // dom.clean(__func);
 }
 
 /**

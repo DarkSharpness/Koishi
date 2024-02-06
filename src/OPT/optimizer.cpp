@@ -31,7 +31,7 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::unreachableRemover { &__func };
         IR::mem2regPass { &__func };
         IR::DeadCodeEliminator { &__func };
-        IR::ConstantPropagatior { &__func };
+        IR::ConstantPropagatior { &__func, true };
         IR::AggressiveElimination { &__func };
     }
 }
