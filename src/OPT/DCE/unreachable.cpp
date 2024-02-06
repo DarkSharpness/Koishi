@@ -64,31 +64,33 @@ void unreachableRemover::markUB(block *__p) {
     // - Division by zero
     // - Shift by negative value
     // - Signed integer overflow
-    auto &&__criteria = [](statement *__node) -> bool {
+    auto &&__criteria = [](statement *__node) -> const char * {
         if (auto *__load = __node->as <load_stmt> ()) {
-            if (__load->addr == IRpool::__null__) return true;
-            if (__load->addr->as <undefined> ())  return true;
+            if (__load->addr == IRpool::__null__) return "null pointer dereference";
+            if (__load->addr->as <undefined> ())  return "unknown memory access";
         } else if (auto *__store = __node->as <store_stmt> ()) {
-            if (__store->addr == IRpool::__null__) return true;
-            if (__store->addr->as <undefined> ())  return true;
+            if (__store->addr == IRpool::__null__) return "null pointer dereference";
+            if (__store->addr->as <undefined> ())  return "unknown memory access";
         } else if (auto *__get = __node->as <get_stmt> ()) {
-            if (__get->addr == IRpool::__null__) return true;
-            if (__get->addr->as <undefined> ())  return true;
+            if (__get->addr == IRpool::__null__) return "null pointer dereference";
+            if (__get->addr->as <undefined> ())  return "unknown memory access";
         } else if (auto *__bin = __node->as <binary_stmt> ()) {
             switch (__bin->op) {
                 case __bin->DIV: case __bin->MOD:
-                    if (__bin->rval == IRpool::__zero__) { return true; } break;
+                    if (__bin->rval == IRpool::__zero__) return "division by zero";
+                    break; 
                 case __bin->SHL: case __bin->SHR:
                     if (auto *__val = __bin->rval->as <integer_constant> ())
-                        if (__val->value < 0) { return true; }
+                        if (__val->value < 0) return "shift by negative value";
                     break;
             }
         }
-        return false;
+        return nullptr;
     };
 
     for (auto __node : __p->data) {
-        if (__criteria(__node)) {
+        if (auto __msg = __criteria(__node)) {
+            warning(std::format("Undefined behavior: {}", __msg));
             __p->phi.clear();
             __p->data.clear();
             __p->flow = IRpool::allocate <unreachable_stmt> ();

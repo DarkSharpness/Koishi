@@ -104,11 +104,8 @@ void constantFolder::visitBinary(binary_expr *ctx) {
     }
 }
 
-static void warningDivideByZero(expression *__lhs, char __op) {
-    warning (
-        std::format("Divide by zero is undefined behavior: \"{} {} 0\"",
-            __lhs->to_string(), __op));
-}
+/* The warning is moved to IR. */
+static void warningDivideByZero(expression *__lhs, char __op) {}
 
 
 /**
