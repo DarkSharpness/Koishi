@@ -108,7 +108,7 @@ struct class_scanner : scanner {
 
         /* Take record of all classes defined. */
         for (auto *__class : global | transform(to_class) | filter(non_null)) {
-            runtime_assert(name_set.insert(__class->name).second,
+            semantic_check(name_set.insert(__class->name).second,
                 "Duplicated class name: ", __class->name);
             class_map[__class->name].field = __class->field = scope_alloc.allocate();
         }
@@ -119,7 +119,7 @@ struct class_scanner : scanner {
             if (!name_set.count(__class.name))
                 __msg += '\"' + __class.name + "\" ";
 
-        runtime_assert(__msg.empty(), "Undefined class name: ", __msg);
+        semantic_check(__msg.empty(), "Undefined class name: ", __msg);
     }
 
   public:
@@ -161,18 +161,18 @@ struct function_scanner : scanner {
     /* Check whether there are invalid void in the function. */
     void check_void(function *__func) {
         if (__func->type.base == void_class)
-            runtime_assert(__func->type.dimensions == 0, "Void cannot be array");
+            semantic_check(__func->type.dimensions == 0, "Void cannot be array");
 
         for (auto &__arg : __func->args)
-            runtime_assert(__arg.type.base != void_class, "Void cannot be argument type");
+            semantic_check(__arg.type.base != void_class, "Void cannot be argument type");
     }
 
     /* Check for global functions. */
     void check_global(function *__func) {
         check_void(__func);
-        runtime_assert(!class_map.count(__func->name),
+        semantic_check(!class_map.count(__func->name),
             "Function name cannot be class name: \"", __func->name, "\"");
-        runtime_assert(global->insert(__func),
+        semantic_check(global->insert(__func),
             "Duplicated function name: \"", __func->name, "\"");
     }
 
@@ -181,10 +181,10 @@ struct function_scanner : scanner {
         check_void(__func);
         if (!__field->insert(__func)) {
             if (__func->name == "")
-                runtime_assert(false,
+                semantic_check(false,
                     "Constructor cannot be overloaded: \"" , __func->type.data(), "\"");
             else // Non-constructor function.
-                runtime_assert(false,
+                semantic_check(false,
                     "Duplicated member function name: \"", __func->name, "\"");
             __builtin_unreachable();
         }
@@ -213,11 +213,11 @@ struct function_scanner : scanner {
             if (auto __func = dynamic_cast <function_def *> (__node)) {
                 check_member(__func, __class->field);
 
-                runtime_assert(__func->name != __class->name,
+                semantic_check(__func->name != __class->name,
                     "Function name cannot be class name");
 
                 if (__func->is_constructor()) {
-                    runtime_assert(__func->type.data() == __class->name,
+                    semantic_check(__func->type.data() == __class->name,
                         "Constructor name must be the same as class name");
                     __func->type = { void_class, 0, 0 };
                 }
@@ -234,11 +234,11 @@ struct function_scanner : scanner {
             } else { // Member variable.
                 auto *__list = safe_cast <variable_def *> (__node);
                 for (auto &&[__name, __init] : __list->vars) {
-                    runtime_assert(__init == nullptr,
+                    semantic_check(__init == nullptr,
                         "Member variable cannot have default value");
 
                     /* Insert and check duplicate of member variables. */
-                    runtime_assert(__class->field->insert(
+                    semantic_check(__class->field->insert(
                         create_variable(__list->type, __name, __class->name + "." + __name)
                     ), "Duplicated member variable name: ", __name);
                 }
@@ -268,7 +268,7 @@ struct type_checker {
 
     static const char *check_int(binary_expr *ctx) {
         if (ctx->op.str[0] == ctx->op.str[1])
-            runtime_assert(ctx->op.str[0] != '&' && ctx->op.str[0] != '|',
+            semantic_check(ctx->op.str[0] != '&' && ctx->op.str[0] != '|',
                 "Invalid logical operator on int");
         return is_cmp(ctx->op) ? "bool" : "int";
     }
@@ -278,7 +278,7 @@ struct type_checker {
             case '&': case '|': // && and || are valid.
                 if (ctx->op.str[1]) break; [[fallthrough]];
             case '>': case '<': case '+': case '-': case '*': case '/': case '%': case '^':
-                runtime_assert(false, "Invalid operator on bool");
+                semantic_check(false, "Invalid operator on bool");
                 __builtin_unreachable();
         } return "bool";
     }
@@ -286,14 +286,14 @@ struct type_checker {
     static const char *check_string(binary_expr *ctx) {
         if (is_cmp(ctx->op)) return "bool";
         if (ctx->op == "+") return "string";
-        runtime_assert(false, "Invalid operator on string");
+        semantic_check(false, "Invalid operator on string");
         __builtin_unreachable();
     }
 
     /* For class/null type, only != and == are allowed. */
     static const char *check_other(binary_expr *ctx) {
         if (ctx->op.str[0] == '=' || ctx->op.str[0] == '!') return "bool";
-        runtime_assert(false, "Invalid operator on ", ctx->lval->type.data());
+        semantic_check(false, "Invalid operator on ", ctx->lval->type.data());
         __builtin_unreachable();
     }
 };

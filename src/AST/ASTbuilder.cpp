@@ -8,7 +8,7 @@ namespace dark::AST {
 static std::string Mx_string_parse(std::string __src) {
     std::string __dst;
     if (__src.front() != '\"' || __src.back() != '\"')
-        runtime_assert(false, "Invalid string literal.");
+        semantic_check(false, "Invalid string literal.");
     __src.pop_back();
     for( size_t i = 1 ; i < __src.length() ; ++i) {
         if (__src[i] == '\\') {
@@ -249,8 +249,8 @@ std::any ASTbuilder::visitConstruct(MxParser::ConstructContext *__tmp) {
 
     /* Build up subscript , and part of type information. */
     if (auto *__idx = ctx->new_Index()) {
-        runtime_assert(!ctx->Paren_Left_(), "Parenthesis is not allowed in array initialization.");
-        runtime_assert(__idx->bad.empty(), "Bad array index format.");
+        semantic_check(!ctx->Paren_Left_(), "Parenthesis is not allowed in array initialization.");
+        semantic_check(__idx->bad.empty(), "Bad array index format.");
         for (auto __p : __idx->good)
             __construct->subscript.push_back(get_node <expression> (__p));
         /* Set the dimensions. */

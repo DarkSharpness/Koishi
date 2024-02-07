@@ -66,7 +66,7 @@ void ASTchecker::visitSubscript(subscript_expr *ctx) {
     ctx->field = top;
     for (auto __p : ctx->subscript) {
         visit(__p);
-        runtime_assert(__p->type == get_type("int"), "Subscript must be integer");
+        semantic_check(__p->type == get_type("int"), "Subscript must be integer");
     }
     visit(ctx->expr);
 
@@ -74,7 +74,7 @@ void ASTchecker::visitSubscript(subscript_expr *ctx) {
     auto __type = ctx->expr->type;
     __type.dimensions -= ctx->subscript.size();
     __type.assignable  = true;
-    runtime_assert(__type.dimensions >= 0, "Too many subscripts");
+    semantic_check(__type.dimensions >= 0, "Too many subscripts");
     ctx->type = __type;
 }
 
@@ -82,17 +82,17 @@ void ASTchecker::visitFunction(function_expr *ctx) {
     ctx->field = top;
     visit(ctx->expr);
     auto &__type = ctx->expr->type;     // Should be function type.
-    runtime_assert(__type.is_function(), "Not a function");
+    semantic_check(__type.is_function(), "Not a function");
     auto *__func = __type.base->func;   // Real function pointer.
     ctx->func    = __func;              // Set func.
-    runtime_assert(__func->args.size() == ctx->args.size(),
+    semantic_check(__func->args.size() == ctx->args.size(),
         "Wrong number of arguments");
     auto  __args = __func->args.begin();
     for (auto __p : ctx->args) {
         visit(__p);
-        runtime_assert(
+        semantic_check(
             is_convertible(__p->type, __args->type),
-            "Wrong argument type"
+            "Wrong function argument type"
         ); ++__args;
     }
     /* Return values are no assignable. */
@@ -104,7 +104,7 @@ void ASTchecker::visitUnary(unary_expr *ctx) {
     visit(ctx->expr);
     const auto &__type = ctx->expr->type;
     if (ctx->op.str[1]) { // "++" or "--" case.
-        runtime_assert(__type == get_type("int") && __type.assignable,
+        semantic_check(__type == get_type("int") && __type.assignable,
             "Invalid self-inc/dec");
         // Only prefix ++/-- is assignable.
         ctx->type = __type;
@@ -112,13 +112,13 @@ void ASTchecker::visitUnary(unary_expr *ctx) {
     } else {
         switch (ctx->op.str[0]) {
             case '+':   case '-':   case '~':
-                runtime_assert(__type == get_type("int"),
+                semantic_check(__type == get_type("int"),
                     "Invalid unary operator"); break;
             case '!':
-                runtime_assert(__type == get_type("bool"),
+                semantic_check(__type == get_type("bool"),
                     "Invalid unary operator"); break;
             default:
-                runtime_assert(false, "Unexpected unary operator");
+                semantic_check(false, "Unexpected unary operator");
                 __builtin_unreachable();
         }
         // Other unary operators are not assignable.
@@ -134,16 +134,16 @@ void ASTchecker::visitBinary(binary_expr *ctx) {
     const auto &__ltype = ctx->lval->type;
     const auto &__rtype = ctx->rval->type;
 
-    runtime_assert(!__ltype.is_function() && !__rtype.is_function(),
+    semantic_check(!__ltype.is_function() && !__rtype.is_function(),
         "Function cannot be binary operand");
-    runtime_assert(!is_void(__ltype) && !is_void(__rtype),
+    semantic_check(!is_void(__ltype) && !is_void(__rtype),
         "Void cannot be binary operand");
 
     /* Assignment. */
     if (ctx->op == "=") {
-        runtime_assert(__ltype.assignable,
+        semantic_check(__ltype.assignable,
             "LHS not assignable in assignment");
-        runtime_assert(is_convertible(__rtype, __ltype),
+        semantic_check(is_convertible(__rtype, __ltype),
             "RHS not convertible to LHS in assignment");
         ctx->type = __ltype;
         return;
@@ -162,7 +162,7 @@ void ASTchecker::visitBinary(binary_expr *ctx) {
             ctx->type = get_type(type_checker::check_other(ctx));
         }
     } else {
-        runtime_assert(
+        semantic_check(
             is_convertible(__rtype, __ltype) || is_convertible(__ltype, __rtype),
             "Incompatible types in binary expression"
         );
@@ -173,8 +173,7 @@ void ASTchecker::visitBinary(binary_expr *ctx) {
 void ASTchecker::visitTernary(ternary_expr *ctx) {
     ctx->field = top;
     visit(ctx->cond);
-    runtime_assert(ctx->cond->type == get_type("bool"),
-        "Condition must be bool");
+    semantic_check(ctx->cond->type == get_type("bool"), "Condition must be bool");
 
     visit(ctx->lval);
     visit(ctx->rval);
@@ -186,7 +185,7 @@ void ASTchecker::visitTernary(ternary_expr *ctx) {
     } else if (is_convertible(__ltype, __rtype)) {
         ctx->type = __rtype;
     } else {
-        runtime_assert(false, "Incompatible types in ternary expression");
+        semantic_check(false, "Incompatible types in ternary expression");
     }
 
     /* We do not support left-value ternery expression! */
@@ -197,25 +196,25 @@ void ASTchecker::visitMember(member_expr *ctx) {
     ctx->field = top;
     visit(ctx->expr);
     const auto &__type = ctx->expr->type;
-    runtime_assert(!__type.is_function(), "Function cannot be member operand");
+    semantic_check(!__type.is_function(), "Function cannot be member operand");
     if (__type.dimensions > 0) {
         /* Actually, only .size() is valid. */
         auto __member = class_map["_Array"].field->find(ctx->name);
-        runtime_assert(__member, "Member not found for \"_Array\" type");
+        semantic_check(__member, "Member not found for \"_Array\" type");
         ctx->type = get_type(__member);
     } else {
         auto __member = __type.base->field->find(ctx->name);
-        runtime_assert(__member, "Member not found for class type");
+        semantic_check(__member, "Member not found for class type");
         ctx->type = get_type(__member);
     }
 }
 
 void ASTchecker::visitConstruct(construct_expr *ctx) {
     ctx->field = top;
-    runtime_assert(!is_void(ctx->type), "Cannot construct void object!");
+    semantic_check(!is_void(ctx->type), "Cannot construct void object!");
     for (auto __p : ctx->subscript) {
         visit(__p);
-        runtime_assert(__p->type == get_type("int"), "Subscript must be integer");
+        semantic_check(__p->type == get_type("int"), "Subscript must be integer");
     }
     ctx->type.assignable = false;
 }
@@ -223,7 +222,7 @@ void ASTchecker::visitConstruct(construct_expr *ctx) {
 void ASTchecker::visitAtomic(atomic_expr *ctx) {
     ctx->field = top;
     auto __atomic = top->find(ctx->name);
-    runtime_assert(__atomic, "No such identifier \"",ctx->name,"\"");
+    semantic_check(__atomic, "No such identifier \"",ctx->name,"\"");
     ctx->type = get_type(__atomic);
     ctx->real = __atomic;
 }
@@ -235,7 +234,7 @@ void ASTchecker::visitLiteral(literal_expr *ctx) {
         case literal_expr::STRING: ctx->type = get_type("string");  return;
         case literal_expr::_BOOL_: ctx->type = get_type("bool");    return;
         case literal_expr::_NULL_: ctx->type = get_type("null");    return;
-        default: runtime_assert(false, "This should not happen");   break;
+        default: semantic_check(false, "This should not happen");   break;
     }
     __builtin_unreachable();
 }
@@ -245,7 +244,7 @@ void ASTchecker::visitFor(for_stmt *ctx) {
     if (ctx->init) visit(ctx->init);
     if (ctx->cond) {
         visit(ctx->cond);
-        runtime_assert(ctx->cond->type == get_type("bool"),
+        semantic_check(ctx->cond->type == get_type("bool"),
             "Condition must be bool");
     }
     if (ctx->step) visit(ctx->step);
@@ -259,7 +258,7 @@ void ASTchecker::visitFor(for_stmt *ctx) {
 void ASTchecker::visitWhile(while_stmt *ctx) {
     ctx->field = top = alloc.allocate(top);
     visit(ctx->cond);
-    runtime_assert(ctx->cond->type == get_type("bool"),
+    semantic_check(ctx->cond->type == get_type("bool"),
         "Condition must be bool");
 
     loop_stack.push_back(ctx);
@@ -271,20 +270,20 @@ void ASTchecker::visitWhile(while_stmt *ctx) {
 void ASTchecker::visitFlow(flow_stmt *ctx) {
     ctx->field = top;
     if (ctx->sort == flow_stmt::RETURN) {
-        runtime_assert(top_function, "Return outside function");
+        semantic_check(top_function, "Return outside function");
         if (ctx->expr) {
             visit(ctx->expr);
-            runtime_assert(
+            semantic_check(
                 is_convertible(ctx->expr->type, top_function->type),
                 "Return type mismatch"
             );
         } else {
-            runtime_assert(top_function->type == get_type("void"),
+            semantic_check(top_function->type == get_type("void"),
                 "Return type mismatch");
         }
         ctx->func = top_function;
     } else { // Continue or Break.
-        runtime_assert(!loop_stack.empty(), "Break outside loop");
+        semantic_check(!loop_stack.empty(), "Break outside loop");
         ctx->loop = loop_stack.back();
     }
 }
@@ -300,7 +299,7 @@ void ASTchecker::visitBranch(branch_stmt *ctx) {
     ctx->field = top;
     for (auto [__cond, __body] : ctx->branches) {
         visit(__cond);
-        runtime_assert(__cond->type == get_type("bool"),
+        semantic_check(__cond->type == get_type("bool"),
             "Condition must be bool");
         top = alloc.allocate(top);
         visit(__body);
@@ -321,18 +320,18 @@ void ASTchecker::visitSimple(simple_stmt *ctx) {
 
 void ASTchecker::visitVariableDef(variable_def *ctx) {
     ctx->field = top;
-    runtime_assert(!is_void(ctx->type), "Cannot declare void variable");
+    semantic_check(!is_void(ctx->type), "Cannot declare void variable");
     for (auto &[__name,__init] : ctx->vars) {
         if (__init) {
             visit(__init);
-            runtime_assert(
+            semantic_check(
                 is_convertible(__init->type, ctx->type),
                 "Initializer type mismatch"
             );
         }
 
         auto *__var = create_variable(ctx->type, __name);
-        runtime_assert(top->insert(__var), "Duplicate variable name");
+        semantic_check(top->insert(__var), "Duplicate variable name");
 
         if (top_function) {
             top_function->locals.push_back(__var);
@@ -359,7 +358,7 @@ void ASTchecker::visitFunctionDef(function_def *ctx) {
 
     for (auto &[__type, __name] : ctx->args) {
         auto *__var = create_variable(__type, __name);
-        runtime_assert(top->insert(__var), "Duplicate argument name");
+        semantic_check(top->insert(__var), "Duplicate argument name");
     }
 
     visit(ctx->body);
@@ -401,9 +400,9 @@ void ASTchecker::visit_init() {
 
 void ASTchecker::check_main() {
     auto *__func = dynamic_cast <function *> (global->find("main"));
-    runtime_assert(__func, "main function not found");
-    runtime_assert(__func->args.size() == 0, "main function must have no arguments");
-    runtime_assert(__func->type == get_type("int"), "main function must return int");
+    semantic_check(__func, "main function not found");
+    semantic_check(__func->args.size() == 0, "main function must have no arguments");
+    semantic_check(__func->type == get_type("int"), "main function must return int");
 }
 
 typeinfo ASTchecker::get_type(identifier *__id) {
