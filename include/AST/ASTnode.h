@@ -194,7 +194,7 @@ struct class_def final : definition {
 template <typename ..._Args>
 inline void semantic_check(bool __cond, _Args &&...__args) {
     if (__builtin_expect(__cond, true)) return;
-    throw error((std::string(std::forward <_Args>(__args)) + ...));
+    throw error("Semantic error:" + (std::string(std::forward <_Args>(__args)) + ...));
 }
 
 

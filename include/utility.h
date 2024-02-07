@@ -10,7 +10,7 @@ namespace dark {
 struct error : std::exception {
     std::string msg;
     error(std::string __s) : msg(std::move(__s)) {
-        std::cerr << std::format("\033[31mError: {}\n\033[0m", msg);
+        std::cerr << std::format("\033[31m{}\n\033[0m", msg);
     }
     const char *what() const noexcept override { return msg.c_str(); }
 };
@@ -23,7 +23,11 @@ struct warning : std::exception {
     const char *what() const noexcept override { return msg.c_str(); }
 };
 
-/* Check in runtime. If fails, throw. */
+/**
+ * @brief Some run-time assertion. 
+ * If failed, there's a bug in my code.
+ * Distinguish it from 'semantic_check'.
+ */
 template <typename ..._Args>
 inline void runtime_assert(bool __cond, _Args &&...__args) {
     if (__builtin_expect(__cond, true)) return;
