@@ -70,7 +70,7 @@ void mem2regPass::spreadDef(block *__node) {
                 if (__is_simple(__var))
                     defs.insert(__var);
 
-    for (auto __next : getFrontier(__node)) {
+    for (auto __next : __node->fro) {
         auto &__map = phiMap[__next];
         for (auto *__var : defs) {
             auto &__phi = __map[__var];
@@ -104,7 +104,7 @@ void mem2regPass::spreadPhi() {
         auto __cur  = std::move(__added[__node]);
 
         /* Visit the frontier, tries to update. */
-        for (auto __next : getFrontier(__node)) {
+        for (auto __next : __node->fro) {
             std::size_t __cnt = 0;
             auto &__map = phiMap[__next];
             auto &__vec = __added[__next];

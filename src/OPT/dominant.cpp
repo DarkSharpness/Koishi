@@ -88,7 +88,8 @@ dominantMaker::dominantMaker(function *__func, bool __is_post) {
     std::reverse(rpo.begin(), rpo.end());
     iterate(__entry);
 
-    buildFrontier();
+    clean(__func);
+    buildDomTree();
     if (__is_post) {
         /* Post dominant: Swap back prev and next. */
         for (auto &__p : __func->data) std::swap(__p->next, __p->prev);
@@ -144,47 +145,50 @@ void dominantMaker::removeDummy() {
     for (auto *__p : rpo) {
         __erase(__p->next);
         __erase(__p->prev);
-        __erase(getDomSet(__p));
-        __erase(getFrontier(__p));
+        __erase(__p->dom);
+        __erase(__p->fro);
     }
     __erase(rpo);
 }
 
+/* Clean up the dom set and frontier. */
 void dominantMaker::clean(function *__func) {
-    for (auto &__p : __func->data) {
-        delete __p->get_ptr <_Info_t>();
-        __p->set_ptr(nullptr);
-    }
-    delete dummy.get_ptr <_Info_t>();
-    dummy.set_ptr(nullptr);
+    for (auto &__p : __func->data)
+        __p->dom.clear(), __p->fro.clear();
+    dummy.dom.clear(), dummy.fro.clear();
 }
 
-void dominantMaker::buildFrontier() {
-    std::size_t __id = 0;
-    for (auto __node : rpo) initFrontier(__node, __id++, rpo.size());
-
-    __id = 0;
-    /* Translate to normal node. */
-    std::vector <_Info_t> __new (rpo.size());
-    for (auto __node : rpo) {
-        auto &__info = getDomNode(__node);
-        std::size_t __n = __info.fro.find_first();
-        while (__n != bitset::npos) {
-            __new[__n].fro.push_back(__node);
-            __n = __info.fro.find_from(__n + 1);
-        }
-        std::size_t __m = __info.dom.find_first();
-        while (__m != bitset::npos) {
-            __new[__id].dom.push_back(rpo[__m]);
-            __m = __info.dom.find_from(__m + 1);
-        }
-        ++__id;
-        delete &__info;
+void dominantMaker::buildDomTree() {
+    for (std::size_t i = 0 ; i < rpo.size() ; ++i) {
+        auto __node = rpo[i];
+        initFrontier(__node, i, rpo.size());
     }
 
-    __id = 0;
-    for (auto __node : rpo)
-        __node->set_ptr(new _Info_t {std::move(__new[__id++])});
+    for (std::size_t i = 0 ; i < rpo.size() ; ++i) {
+        auto *__node = rpo[i];
+        auto *__info = &getDomNode(__node);
+
+        std::size_t n = __info->fro.find_first();
+        while (n != bitset::npos) {
+            rpo[n]->fro.push_back(__node);
+            n = __info->fro.find_from(n + 1);
+        }
+
+        std::size_t m = __info->dom.find_first();
+        if (m == i) {
+            rpo[i]->idom = nullptr;
+            rpo[i]->dom = { rpo[i] };
+        } else {
+            do {
+                rpo[i]->dom.push_back(rpo[m]);
+                m = __info->dom.find_from(m + 1);
+            } while (m != i);
+            rpo[i]->idom = rpo[i]->dom.back();
+            rpo[i]->dom.push_back(rpo[i]);
+        }
+
+        delete __info;  // Clean up
+    }
 }
 
 

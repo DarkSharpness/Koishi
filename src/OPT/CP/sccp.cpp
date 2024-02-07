@@ -150,7 +150,7 @@ void ConstantPropagatior::visitBranch(branch_stmt *__stmt) {
 
 void ConstantPropagatior::modifyValue(block *__block) {
     if (hasDomTree) {
-        auto &__dom = getDomSet(__block);
+        auto &__dom = __block->dom;
         std::sort(__dom.begin(), __dom.end());
     }
     auto &&__operation = [this](statement *__node) -> void {
@@ -161,7 +161,7 @@ void ConstantPropagatior::modifyValue(block *__block) {
                 if (auto __tmp = __new->as <temporary> ()) {
                     auto __from = __tmp->def->get_ptr <block> ();
                     auto __to   = __node->get_ptr <block> ();
-                    auto &__dom = getDomSet(__to);
+                    auto &__dom = __to->dom;
                     if (!std::binary_search(__dom.begin(), __dom.end(), __from))
                         continue;
                 }

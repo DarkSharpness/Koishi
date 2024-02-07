@@ -6,7 +6,12 @@
 
 namespace dark::IR {
 
-using _Info_t = dominantMaker::_Info_t;
+/* Return where should jumps to __block be changed to. */
+static block *getFail(block *__block) { return __block->get_ptr <block> (); }
+static block *setFail(block *__block, block *__fail) {
+    return __block->set_ptr(__fail), __fail;
+}
+
 
 /**
  * @brief Build the fail jump tree and compress it.
@@ -17,12 +22,10 @@ struct FailBuilder {
     _Set_t          visited;
     /* Use path compression to speed up the process. */
     block *build(block *__node) {
-        if (!visited.insert(__node).second)
-            return getDomInfo(__node).get_fail();
-        auto &__info = getDomInfo(__node);
-        auto *__idom = __info.get_idom();
-        auto *__fail = liveSet.contains(__node) || !__idom ? __node : build(__idom);
-        return __info.set_fail(__fail), __fail;
+        if (!visited.insert(__node).second) return getFail(__node);
+        auto *__idom = __node->idom;
+        auto *__fail = (liveSet.contains(__node) || !__idom) ? __node : build(__idom);
+        return setFail(__node, __fail);
     }
 };
 
@@ -34,29 +37,6 @@ static void linkBlock(block *__block) {
     visitBlock(__block, [__block](statement *__stmt) { __stmt->set_ptr(__block); });
 }
 
-/* Use a smart trick to reset the vector to nullptr. */
-static void clearFrontier(_Info_t &__info) { auto __tmp = std::move(__info.fro); }
-
-/* Reset frontier to a safely deallocable state. */
-static void resetFrontier(_Info_t &__info) { __info.set_idom(nullptr); __info.set_fail(nullptr); }
-
-/* Update a jump with its fail. */
-static block *updateJump(block *__block) { return getDomInfo(__block).get_fail(); }
-
-/**
- * @brief Now, the frontier of a block is useless.
- * We may perform some dangerous operation of the
- * storage of the frontier vector.
- */
-static void buildDomTree(block *__node) {
-    _Info_t &__info = getDomInfo(__node);
-    clearFrontier(__info);
-    const std::size_t __size = __info.dom.size() - 1;
-    for (auto *__prev : __info.dom)
-        if (getDomSet(__prev).size() == __size)
-            return void(__info.set_idom(__prev));
-}
-
 AggressiveElimination::AggressiveElimination(function *__func) {
     dominantMaker __dom { __func , true };
 
@@ -64,11 +44,9 @@ AggressiveElimination::AggressiveElimination(function *__func) {
     for (auto *__node : __func->data) markEffect(__node);
     spreadEffect();
 
-    for (auto *__node : __func->data) buildDomTree(__node);
     FailBuilder __fail { blockList.set() , {} };
     for (auto *__node : __func->data) __fail.build(__node);
     for (auto *__node : __func->data) removeDead(__node);
-    for (auto *__node : __func->data) resetFrontier(getDomInfo(__node));
 
     __dom.clean(__func);
     unreachableRemover {__func};
@@ -101,7 +79,7 @@ void AggressiveElimination::spreadEffect() {
                 stmtList.push(__tmp->def);
     };
     auto &&__spread_block = [this](block *__node) -> void {
-        for (auto __prev : getFrontier(__node)) {
+        for (auto __prev : __node->fro) {
             auto *__br = __prev->flow->as <branch_stmt> ();
             runtime_assert(__br, "Invalid block flow.");
             stmtList.push(__br);         
@@ -118,10 +96,10 @@ void AggressiveElimination::spreadEffect() {
 
 void AggressiveElimination::removeDead(block *__block) {
     if (auto *__jump = __block->flow->as <jump_stmt> ()) {
-        __jump->dest = updateJump(__jump->dest);
+        __jump->dest = getFail(__jump->dest);
     } else if (auto *__br = __block->flow->as <branch_stmt> ()) {
-        __br->branch[0] = updateJump(__br->branch[0]);
-        __br->branch[1] = updateJump(__br->branch[1]);
+        __br->branch[0] = getFail(__br->branch[0]);
+        __br->branch[1] = getFail(__br->branch[1]);
         if (__br->branch[0] == __br->branch[1])
             __block->flow = IRpool::allocate <jump_stmt> (__br->branch[0]);
     }
