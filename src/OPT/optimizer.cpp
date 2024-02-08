@@ -9,6 +9,7 @@
 #include "DCE/dce.h"
 #include "DCE/adce.h"
 #include "CP/sccp.h"
+#include "VN/gvn.h"
 
 namespace dark {
 
@@ -28,6 +29,12 @@ static void DoOptimize(IR::IRbuilder *ctx) {
     for (auto &__func : functions) {
         IR::unreachableRemover { &__func };
         IR::mem2regPass { &__func };
+        IR::DeadCodeEliminator { &__func };
+        IR::ConstantPropagatior { &__func, true };
+        IR::dominantMaker::clean(&__func);
+        IR::unreachableRemover { &__func };
+        IR::AggressiveElimination { &__func };
+        IR::GlobalValueNumberPass { &__func };
         IR::DeadCodeEliminator { &__func };
         IR::ConstantPropagatior { &__func, true };
         IR::dominantMaker::clean(&__func);
