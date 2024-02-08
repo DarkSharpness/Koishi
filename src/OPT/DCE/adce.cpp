@@ -38,6 +38,7 @@ static void linkBlock(block *__block) {
 }
 
 AggressiveElimination::AggressiveElimination(function *__func) {
+    if (!checkProperty(__func)) return;
     dominantMaker __dom { __func , true };
 
     for (auto *__node : __func->data) linkBlock(__node);
@@ -50,6 +51,7 @@ AggressiveElimination::AggressiveElimination(function *__func) {
 
     __dom.clean(__func);
     unreachableRemover {__func};
+    setProperty(__func);
 }
 
 void AggressiveElimination::markEffect(block *__blk) {
@@ -107,6 +109,12 @@ void AggressiveElimination::removeDead(block *__block) {
     auto &&__leave_effective = std::views::filter(
         [this](statement *__stmt) -> bool { return stmtList.contains(__stmt); });
     updateBlock(__block, __leave_effective);
+}
+
+void AggressiveElimination::setProperty(function *) {}
+
+bool AggressiveElimination::checkProperty(function *__func) {
+    return !__func->is_unreachable();
 }
 
 

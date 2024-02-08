@@ -7,7 +7,8 @@
 namespace dark::IR {
 
 unreachableRemover::unreachableRemover(function *__func) {
-    if (__func->is_unreachable()) return;
+    if (!checkProperty(__func)) return;
+
     /* Set UB block as unreachable. */
     for (auto *__p : __func->data) markUB(__p);
     CFGbuilder {__func};
@@ -25,6 +26,9 @@ unreachableRemover::unreachableRemover(function *__func) {
 
     /* The CFG is broken now. */
     CFGbuilder {__func};
+
+    // Set the function property
+    setProperty(__func);
 }
 
 void unreachableRemover::dfs0(block *__p) {
@@ -161,5 +165,16 @@ void unreachableRemover::recordCFG(block *__p) {
         if (visit0.count(__next)) edges.insert({__p, __next});
 }
 
+void unreachableRemover::setProperty(function *__func) {
+    __func->has_rpo = false;
+    __func->has_cfg = true;
+    __func->has_dom = false;
+    __func->has_fro = false;
+    __func->rpo.clear();
+}
+
+bool unreachableRemover::checkProperty(function *__func) {
+    return !__func->is_unreachable();
+}
 
 } // namespace dark::IR

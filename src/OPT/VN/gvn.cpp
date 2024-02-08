@@ -5,19 +5,19 @@
 namespace dark::IR {
 
 GlobalValueNumberPass::GlobalValueNumberPass(function *__func) {
-    if (__func->is_unreachable()) return;
+    if (!checkProperty(__func)) return;
     dominantMaker __dom { __func };    
-    rpo = std::move(__dom.rpo);
-    makeDomTree();
+    makeDomTree(__func);
     visitGVN(__func->data[0]);
+    setProperty(__func);
 }
 
 /**
  * @brief Use the space of frontier to store the
  * successor of the block on the dominance tree.
  */
-void GlobalValueNumberPass::makeDomTree() {
-    for (auto __block : rpo) {
+void GlobalValueNumberPass::makeDomTree(function *__func) {
+    for (auto __block : __func->rpo) {
         visitBlock(__block, [__block](statement *__stmt) { __stmt->set_ptr(__block); });
         __block->fro.clear();
         auto __idom = __block->idom;
@@ -79,5 +79,14 @@ void GlobalValueNumberPass::visitJump(jump_stmt *) {}
 void GlobalValueNumberPass::visitUnreachable(unreachable_stmt *) {}
 void GlobalValueNumberPass::visitReturn(return_stmt *) {}
 
+
+void GlobalValueNumberPass::setProperty(function *__func) {
+    __func->has_fro = false;
+}
+
+bool GlobalValueNumberPass::checkProperty(function *__func) {
+    runtime_assert(__func->has_cfg, "?");
+    return !__func->is_unreachable();
+}
 
 } // namespace dark::IR

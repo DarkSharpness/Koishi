@@ -30,9 +30,9 @@ definition *ConstantPropagatior::getValue(definition *__def) {
     return defMap[__tmp].value ? : __def;
 }
 
-ConstantPropagatior::ConstantPropagatior(function *__func, bool __hasDom)
-: hasDomTree(__hasDom) {
-    if (__func->is_unreachable()) return;
+ConstantPropagatior::ConstantPropagatior(function *__func)
+: hasDomTree(__func->has_dom && !__func->is_post) {
+    if (!checkProperty(__func)) return;
 
     for (auto __block : __func->data) initInfo(__block);
     CFGworklist.push({.from = nullptr,.to = __func->data[0]});
@@ -49,6 +49,8 @@ ConstantPropagatior::ConstantPropagatior(function *__func, bool __hasDom)
         }
     } while (!CFGworklist.empty());
     for (auto __block : __func->data) modifyValue(__block);
+
+    setProperty(__func);
 }
 
 void ConstantPropagatior::initInfo(block *__block) {
@@ -170,6 +172,14 @@ void ConstantPropagatior::modifyValue(block *__block) {
         }
     };
     visitBlock(__block, __operation);
+}
+
+void ConstantPropagatior::setProperty(function *__func) {
+    __func->has_dom = false;
+}
+
+bool ConstantPropagatior::checkProperty(function *__func) {
+    return !__func->is_unreachable();
 }
 
 } // namespace dark::IR

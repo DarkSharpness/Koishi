@@ -221,15 +221,24 @@ struct function final : hidden_impl {
     std::vector <argument *> args;   // Arguments
     std::vector <local_variable *> locals; // Local variables
 
-    bool is_builtin {};
-    bool has_input  {};
-    bool has_output {};
+    /* Some basic function meta data. */
+    struct {
+        unsigned is_builtin : 1 {}; // Whether this function is builtin
+        unsigned has_input  : 1 {}; // Whether this function has input
+        unsigned has_output : 1 {}; // Whether this function has output
+        unsigned has_rpo    : 1 {}; // Whether rpo is available
+        unsigned has_cfg    : 1 {}; // Whether CFG is built
+        unsigned has_dom    : 1 {}; // Whether dom tree is built
+        unsigned has_fro    : 1 {}; // Whether frontier is made
+        unsigned is_post    : 1 {}; // Whether post dom or not
+    };
+
+    std::vector <block *> rpo;  // Reverse post order
 
     temporary *create_temporary(typeinfo, const std::string &);
     std::string register_temporary(const std::string &);
 
     void push_back(block *);
-    // void push_back(statement *);     // To avoid misusage.
     void print(std::ostream &) const;   // Print the function data
     bool is_unreachable() const;        // Is this function unreachable?
     bool is_side_effective() const;     // Is this function side effective?

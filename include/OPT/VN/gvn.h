@@ -74,7 +74,6 @@ struct GlobalValueNumberPass final : equalSet, IRbase {
     using _Node_Map = std::unordered_map <node *, expression>;
     using _Info_Map = std::unordered_map <definition *, knowledge>;
 
-    std::vector <block *> rpo;
     _Expr_Map exprMap;  // The expression in a simplified form.
     _Node_Map nodeMap;  // The original expression before modification.
     _Info_Map infoMap;  // The information of the definition.
@@ -82,7 +81,7 @@ struct GlobalValueNumberPass final : equalSet, IRbase {
 
     definition *result {};
     void setResult(definition *__def) { result = __def; }
-    void makeDomTree();
+    static void makeDomTree(function *);
 
     void visitGVN(block *);
     void removeHash(block *);
@@ -135,6 +134,8 @@ struct GlobalValueNumberPass final : equalSet, IRbase {
     void visitPhi(phi_stmt *) override;
     void visitUnreachable(unreachable_stmt *) override;
 
+    void setProperty(function *);
+    bool checkProperty(function *);
 };
 
 

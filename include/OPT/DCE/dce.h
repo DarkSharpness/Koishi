@@ -8,6 +8,8 @@ struct DeadCodeEliminator {
     DeadCodeEliminator(function *);
   private:
     work_queue <statement *> workList;
+    bool checkProperty(function *);
+    void setProperty(function *);
 };
 
 } // namespace dark::IR

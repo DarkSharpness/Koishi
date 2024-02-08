@@ -12,6 +12,8 @@ struct AggressiveElimination {
     void markEffect(block *);
     void spreadEffect();
     void removeDead(block *);
+    void setProperty(function *);
+    bool checkProperty(function *);
 };
 
 } // namespace dark::IR

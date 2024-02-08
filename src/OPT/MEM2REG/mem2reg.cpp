@@ -35,10 +35,10 @@ static phi_stmt *__make_phi(function *__func,local_variable *__var) {
 
 mem2regPass::mem2regPass(function *__func) : top(__func) {
     dominantMaker dom {__func};
-    if (__func->is_unreachable()) return;
+    if (!checkProperty(__func)) return;
 
     /* Step 1: Laying phi functions. */
-    rpo = std::move(dom.rpo);
+    std::swap(rpo, __func->rpo);
     for (auto *__block : rpo) spreadDef(__block);
     spreadPhi();
 
@@ -52,7 +52,9 @@ mem2regPass::mem2regPass(function *__func) : top(__func) {
     auto __last = std::ranges::copy(
         __func->locals | std::views::filter(std::not_fn(__is_simple)), __first).out;
     __func->locals.resize(__last - __first);
-    // dom.clean(__func);
+    std::swap(rpo, __func->rpo);
+
+    setProperty(__func);
 }
 
 /**
@@ -206,6 +208,12 @@ void mem2regPass::collectUse(block *__node) {
 
 void mem2regPass::insertPhi(block *__block) {
     std::ranges::copy(phiMap[__block] | std::views::values, std::back_inserter(__block->phi));
+}
+
+void mem2regPass::setProperty(function *) {}
+
+bool mem2regPass::checkProperty(function *__func) {
+    return !__func->is_unreachable() && !__func->locals.empty();
 }
 
 } // namespace dark::IR

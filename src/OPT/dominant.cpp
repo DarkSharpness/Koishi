@@ -35,6 +35,9 @@ static void initFrontier(block *__node, std::size_t __id, std::size_t __n) {
     getDomNode(__node).fro = std::move(__fro);
 }
 
+static void reverseCFG(function *__func) {
+    for (auto &__p : __func->data) std::swap(__p->next, __p->prev);
+}
 
 /**
  * @brief Initialize the edge of the function.
@@ -72,29 +75,23 @@ void dominantMaker::makePostOrder(block *__entry) {
 }
 
 dominantMaker::dominantMaker(function *__func, bool __is_post) {
-    if (__func->is_unreachable()) return;
+    if (!checkProperty(__func)) return;
     initEdge(__func);
 
-    block *__entry = __func->data.front();
-
-    if (__is_post) {
-        /* Post dominant: Deal with that in a similar manner. */
-        __entry = &dummy;
-        dummy.next = std::move(dummy.prev);
-        for (auto &__p : __func->data) std::swap(__p->next, __p->prev);
-    }
+    block *__entry = __is_post ? &dummy : __func->data.front();
+    if (__is_post) reverseCFG(__func), dummy.next = std::move(dummy.prev);
 
     makePostOrder(__entry);
     std::reverse(rpo.begin(), rpo.end());
-    iterate(__entry);
 
-    clean(__func);
-    buildDomTree();
-    if (__is_post) {
-        /* Post dominant: Swap back prev and next. */
-        for (auto &__p : __func->data) std::swap(__p->next, __p->prev);
-    }
+    iterate(__entry);   // Iterate to collect dom info
+    clean(__func);      // Clean the old dom set
+    buildDomTree();     // Use dom info to build the dom tree
+
+    if (__is_post) reverseCFG(__func);
     removeDummy();
+ 
+    setProperty(__func, __is_post);
 }
 
 /**
@@ -191,5 +188,18 @@ void dominantMaker::buildDomTree() {
     }
 }
 
+void dominantMaker::setProperty(function *__func, bool __is_post) {
+    __func->has_rpo = true;
+    __func->has_cfg = true;
+    __func->has_dom = true;
+    __func->has_fro = true;
+    __func->is_post = __is_post;
+    __func->rpo = std::move(rpo);
+}
+
+/* Fail only when the function is unreachable. */
+bool dominantMaker::checkProperty(function *__func) {
+    return !__func->is_unreachable();
+}
 
 } // namespace dark::IR

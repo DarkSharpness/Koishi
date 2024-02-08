@@ -39,6 +39,8 @@ struct unreachableRemover {
     void updatePhi(block *);    // Remove useless phi branches
     void recordCFG(block *);    // Record CFG
     void removeBlock(function *);   // Remove dead code
+    void setProperty(function *);   // Set property
+    bool checkProperty(function *); // Check property
 };
 
 } // namespace dark::IR

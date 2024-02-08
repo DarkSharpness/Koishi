@@ -40,6 +40,8 @@ struct mem2regPass {
     void collectUse(block *);
     void updateBlock(block *);
     void spreadBranch(block *, block *);
+    void setProperty(function *);
+    bool checkProperty(function *);
 };
 
 

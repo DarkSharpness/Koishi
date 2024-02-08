@@ -7,7 +7,7 @@ namespace dark::IR {
 
 
 DeadCodeEliminator::DeadCodeEliminator(function *__func) {
-    if (__func->is_unreachable()) return;
+    if (!checkProperty(__func)) return;
 
     auto &&__collect_effective = [this](statement *__stmt) -> void { 
         if (auto *__call = __stmt->as <call_stmt> ()) {
@@ -28,6 +28,14 @@ DeadCodeEliminator::DeadCodeEliminator(function *__func) {
         [this](statement *__stmt) -> bool { return workList.contains(__stmt); });
     for (auto *__block : __func->data)
         updateBlock(__block, __leave_effective);
+
+    setProperty(__func);
+}
+
+void DeadCodeEliminator::setProperty(function *) {}
+
+bool DeadCodeEliminator::checkProperty(function *__func) {
+    return !__func->is_unreachable();
 }
 
 
