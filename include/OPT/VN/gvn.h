@@ -1,5 +1,6 @@
 #pragma once
 #include "IRbase.h"
+#include <cstdint>
 #include <unordered_set>
 
 namespace dark::IR {
@@ -22,7 +23,7 @@ struct expression {
     friend bool operator == (expression, expression) = default;
 };
 
-struct expression_hash {
+struct expressionHash {
     std::size_t operator () (const expression &__exp) const {
         std::hash <void *> __hash;
         std::size_t __base = int(__exp.type) << 4 | __exp.op;
@@ -30,11 +31,28 @@ struct expression_hash {
     }
 };
 
+struct knowledge {
+    enum _Const_Bound {
+        UPPER_BOUND,
+        LOWER_BOUND,
+    };
+    long long value[2] = { // avoid implicit overflow
+        [UPPER_BOUND] = INT32_MAX,
+        [LOWER_BOUND] = INT32_MIN,
+    };
+};
+
+struct bitInfo {
+    int8_t sign = 0;    // 1 if non-negative, -1 if negative, 0 if unknown
+    int8_t top  = 31;   // 0 ~ 31. Maximum possible bit.
+    int8_t low  = 0;    // 0 ~ 31. Minimum possible bit.
+};
+
 struct GlobalValueNumberPass final :  equalSet, IRbase {
   public:
     GlobalValueNumberPass(function *__func);
   private:
-    using _Expr_Map = std::unordered_map <expression, definition *, expression_hash>;
+    using _Expr_Map = std::unordered_map <expression, definition *, expressionHash>;
     using _Pair_t   = typename _Expr_Map::value_type;
     using _Node_Map = std::unordered_map <node *, expression>;
 
@@ -53,6 +71,7 @@ struct GlobalValueNumberPass final :  equalSet, IRbase {
 
     void visitAdd(binary_stmt *,definition *,definition *); // +
     void visitSub(binary_stmt *,definition *,definition *); // -
+    void visitNeg(binary_stmt *,definition *);             // -
     void visitMul(binary_stmt *,definition *,definition *); // *
     void visitDiv(binary_stmt *,definition *,definition *); // /
     void visitMod(binary_stmt *,definition *,definition *); // %
@@ -61,6 +80,14 @@ struct GlobalValueNumberPass final :  equalSet, IRbase {
     void visitAnd(binary_stmt *,definition *,definition *); // &
     void visitOr(binary_stmt *,definition *,definition *);  // |
     void visitXor(binary_stmt *,definition *,definition *); // ^
+
+    bool isAbsLess(definition *, definition *);
+    bool isEqual(definition *, definition *);
+    bool isNotEqual(definition *, definition *);
+    bool isLessThan(definition *, definition *);
+    bool isLessEqual(definition *, definition *);
+
+    bitInfo traceBit(definition *);
 
     void visitCompare(compare_stmt *) override;
     void visitBinary(binary_stmt *) override;
