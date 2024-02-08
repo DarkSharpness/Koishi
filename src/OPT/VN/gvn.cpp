@@ -29,12 +29,22 @@ void GlobalValueNumberPass::makeDomTree() {
 void GlobalValueNumberPass::visitGVN(block *__block) {
     for (auto __stmt : __block->phi)    visitPhi(__stmt);
     for (auto __stmt : __block->data)   visit(__stmt);
-    for (auto __next : __block->next)   updateNext(__block, __next);
+    visit(__block->flow);
     visited.insert(__block);
     for (auto __next : __block->fro)    visitGVN(__next);
     visited.erase(__block);
     return removeHash(__block);
 }
+
+void GlobalValueNumberPass::removeHash(block *__block) {
+    for (auto __stmt : __block->data) {
+        if (auto __bin = __stmt->as <binary_stmt> ()) {
+            if (defMap[__bin->dest] == __bin->dest)
+                exprMap.erase({ false, __bin->op, __bin->lval, __bin->rval});
+        }
+    }
+}
+
 
 /* Merge the joint value of phi node. */
 void GlobalValueNumberPass::visitPhi(phi_stmt *__phi) {
@@ -68,5 +78,6 @@ void GlobalValueNumberPass::visitBranch(branch_stmt *) {}
 void GlobalValueNumberPass::visitJump(jump_stmt *) {}
 void GlobalValueNumberPass::visitUnreachable(unreachable_stmt *) {}
 void GlobalValueNumberPass::visitReturn(return_stmt *) {}
+
 
 } // namespace dark::IR
