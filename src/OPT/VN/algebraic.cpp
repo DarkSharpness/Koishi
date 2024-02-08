@@ -1,8 +1,9 @@
 #include "VN/gvn.h"
 #include "IRnode.h"
+#include <cmath>
 
 namespace dark::IR {
-
+using ll = long long;
 
 static binary_stmt *__get_binary(definition *__def) {
     auto __tmp = __def->as <temporary> ();
@@ -13,11 +14,6 @@ static bool __is_negative(binary_stmt *__stmt) {
     return __stmt->op == binary_stmt::SUB
         && __stmt->lval == IRpool::__zero__;
 }
-static bool __mul_const(binary_stmt *__stmt) {
-    return __stmt->op == binary_stmt::MUL
-        && __stmt->rval->as <literal> ();
-}
-
 integer_constant *__get_lconst(binary_stmt *__stmt) {
     return __stmt->lval->as <integer_constant> ();
 }
@@ -28,6 +24,15 @@ integer_constant *__get_rconst(binary_stmt *__stmt) {
 
 static constexpr std::hash <void *> __hash {};
 static constexpr auto __create_int = IRpool::create_integer;
+
+
+/* Swap to right as much as possible. */
+static inline void __formatize(definition *&__lval, definition *&__rval) {
+    if (__lval->as <literal> ()) return std::swap(__lval, __rval);
+    if (__rval->as <literal> ()) return; // Do nothing.
+    if (__hash(__lval) > __hash(__rval)) std::swap(__lval, __rval);
+}
+
 
 void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
     /**
@@ -41,16 +46,16 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
     auto __rval = getValue(ctx->rval);
     /* Try to simplify the expression first. */
     switch (ctx->op) {
-        case ctx->ADD: return visitAdd(ctx, __lval, __rval);
-        case ctx->SUB: return visitSub(ctx, __lval, __rval);
-        case ctx->MUL: return visitMul(ctx, __lval, __rval);
-        case ctx->DIV: return visitDiv(ctx, __lval, __rval);
-        case ctx->MOD: return visitMod(ctx, __lval, __rval);
-        case ctx->SHL: return visitShl(ctx, __lval, __rval);
-        case ctx->SHR: return visitShr(ctx, __lval, __rval);
-        case ctx->AND: return visitAnd(ctx, __lval, __rval);
-        case ctx->OR:  return visitOr(ctx, __lval, __rval);
-        case ctx->XOR: return visitXor(ctx, __lval, __rval);
+        case ctx->ADD: visitAdd(ctx, __lval, __rval); break;
+        case ctx->SUB: visitSub(ctx, __lval, __rval); break;
+        case ctx->MUL: visitMul(ctx, __lval, __rval); break;
+        case ctx->DIV: visitDiv(ctx, __lval, __rval); break;
+        case ctx->MOD: visitMod(ctx, __lval, __rval); break;
+        case ctx->SHL: visitShl(ctx, __lval, __rval); break;
+        case ctx->SHR: visitShr(ctx, __lval, __rval); break;
+        case ctx->AND: visitAnd(ctx, __lval, __rval); break;
+        case ctx->OR:  visitOr(ctx, __lval, __rval);  break;
+        case ctx->XOR: visitXor(ctx, __lval, __rval); break;
     }
 
     if (result != nullptr) { /* Equal to another value. */
@@ -60,6 +65,7 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
         auto [__iter, __success]
             = exprMap.try_emplace({ false, ctx->op, ctx->lval, ctx->rval }, ctx->dest);
         defMap[ctx->dest] = __iter->second;
+        if (__success) buildKnowledge(ctx);
         // Insert success if and only if defMap[ctx->dest] = ctx->dest
         // Then, in removeHash, we need to remove {false, ctx->op, ctx->lval, ctx->rval}
     }
@@ -67,9 +73,8 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
 
 void GlobalValueNumberPass::visitAdd
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
-    /* First, formatize the expression. */
-    if (__lval->as <literal> () || __hash(__lval) > __hash(__rval))
-        std::swap(__lval, __rval);
+    __formatize(__lval, __rval);
+
     ctx->op = ctx->ADD;
     ctx->lval = __lval;
     ctx->rval = __rval;
@@ -238,9 +243,8 @@ void GlobalValueNumberPass::visitNeg(binary_stmt *ctx, definition *__rval) {
 
 void GlobalValueNumberPass::visitMul
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
-    /* First, formatize the expression. */
-    if (__lval->as <literal> () || __hash(__lval) > __hash(__rval))
-        std::swap(__lval, __rval);
+    __formatize(__lval, __rval);
+
     ctx->op = ctx->MUL;
     ctx->lval = __lval;
     ctx->rval = __rval;
@@ -320,7 +324,7 @@ void GlobalValueNumberPass::visitDiv
 
         /* x / (1 << c) = x >> c (when x >= 0) */
         if (std::has_single_bit((unsigned)__rconst->value))
-            if (traceBit(__lval).sign == 1)
+            if (traceSignBit(__lval) > 0)
                 return visitShr(ctx, __lval,
                     __create_int(std::countr_zero((unsigned)__rconst->value)));
 
@@ -341,7 +345,8 @@ void GlobalValueNumberPass::visitDiv
     if (__lbin && __rconst) {
         if (__lbin->op == ctx->MUL) {
             /* (x * c) / d = x * (c / d) (when c % d == 0)*/
-            if (auto __val = __get_rconst(__lbin); __val->value % __rconst->value == 0)
+            if (auto __val = __get_rconst(__lbin);
+                __val && __val->value % __rconst->value == 0)
                 return visitMul(ctx, __lbin->lval, __create_int(__val->value / __rconst->value));
         } else if (__lbin->op == ctx->DIV) {
             /* (x / c) / d = x / (c * d) */
@@ -394,7 +399,7 @@ void GlobalValueNumberPass::visitMod
 
         /* x % (1 << c) = x & ((1 << c) - 1) (when x >= 0) */
         if (std::has_single_bit((unsigned)__rconst->value))
-            if (traceBit(__lval).sign == 1)
+            if (traceSignBit(__lval) > 0)
                 return visitAnd(ctx, __lval, __create_int(__rconst->value - 1));
 
     }
@@ -405,7 +410,8 @@ void GlobalValueNumberPass::visitMod
             if (__lbin->rval == __rval) return setResult(IRpool::__zero__);
             if (__lbin->lval == __rval) return setResult(IRpool::__zero__);
             /* (x * c) % d = 0 */
-            if (auto __val = __get_rconst(__lbin); __rconst && __val->value % __rconst->value == 0)
+            if (auto __val = __get_rconst(__lbin);
+                __val && __rconst && __val->value % __rconst->value == 0)
                 return setResult(IRpool::__zero__);
         } else if (__lbin->rval == __rval && __is_negative(__lbin)) {
             /* (0 - x) % x = 0 */
@@ -426,7 +432,7 @@ void GlobalValueNumberPass::visitShl
 
     if (__lval == IRpool::__zero__) return setResult(__lval);
 
-    auto __rconst = __lval->as <integer_constant> ();
+    auto __rconst = __rval->as <integer_constant> ();
     if (!__rconst) return; // Cannot simplify.
 
     auto __shift = __rconst->value; // Must be non-negative.
@@ -454,11 +460,11 @@ void GlobalValueNumberPass::visitShl
         }
     }
 
-    auto __type = traceBit(__lval);
+    auto __type = traceBits(__lval);
     /* x << c = 0 (all overflowed) */
-    if (__type.low + __shift > 31) return setResult(IRpool::__zero__);
+    if (__type.low > 31 - __shift) return setResult(IRpool::__zero__);
     /* x << c = x * (1 << c) (no overflow) */
-    if (__type.top + __shift < 31) return visitMul(ctx, __lval, __create_int(1 << __shift));
+    if (__type.top < 31 - __shift) return visitMul(ctx, __lval, __create_int(1 << __shift));
 }
 
 void GlobalValueNumberPass::visitShr
@@ -469,7 +475,7 @@ void GlobalValueNumberPass::visitShr
 
     if (__lval == IRpool::__zero__) return setResult(__lval);
 
-    auto __rconst = __lval->as <integer_constant> ();
+    auto __rconst = __rval->as <integer_constant> ();
     if (!__rconst) return; // Cannot simplify.
 
     auto __shift = __rconst->value; // Must be non-negative.
@@ -492,21 +498,17 @@ void GlobalValueNumberPass::visitShr
     }
 
     /* x >> c = 0 (all underflowed, and x >= 0) */
-    auto __type = traceBit(__lval);
-    if (__type.sign == 1 && __type.top < __shift)
+    auto __type = traceBits(__lval);
+    if (__type.top < 31 && __type.top < __shift)
         return setResult(IRpool::__zero__);
-    /* x >> c = -1 (all underflowed, and x < 0) */
-    if (__type.sign == -1 && __shift >= 31)
-        return setResult(IRpool::__neg1__);
 }
 
 
 void GlobalValueNumberPass::visitAnd
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
-    /* First, formatize the expression. */
-    if (__lval->as <literal> () || __hash(__lval) > __hash(__rval))
-        std::swap(__lval, __rval);
-    ctx->op = ctx->ADD;
+    __formatize(__lval, __rval);
+
+    ctx->op = ctx->AND;
     ctx->lval = __lval;
     ctx->rval = __rval;
 
@@ -545,8 +547,8 @@ void GlobalValueNumberPass::visitAnd
         }
     }
 
-    auto __lbit = traceBit(__lval);
-    auto __rbit = traceBit(__rval);
+    auto __lbit = traceBits(__lval);
+    auto __rbit = traceBits(__rval);
     /* No bit intersection. */
     if (__lbit.top < __rbit.low || __rbit.top < __lbit.low)
         return setResult(IRpool::__zero__);
@@ -556,8 +558,8 @@ void GlobalValueNumberPass::visitAnd
 void GlobalValueNumberPass::visitOr
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     /* First, formatize the expression. */
-    if (__lval->as <literal> () || __hash(__lval) > __hash(__rval))
-        std::swap(__lval, __rval);
+    __formatize(__lval, __rval);
+
     ctx->op = ctx->OR;
     ctx->lval = __lval;
     ctx->rval = __rval;
@@ -610,8 +612,8 @@ void GlobalValueNumberPass::visitOr
 void GlobalValueNumberPass::visitXor
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     /* First, formatize the expression. */
-    if (__lval->as <literal> () || __hash(__lval) > __hash(__rval))
-        std::swap(__lval, __rval);
+    __formatize(__lval, __rval);
+
     ctx->op = ctx->XOR;
     ctx->lval = __lval;
     ctx->rval = __rval;

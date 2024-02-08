@@ -31,34 +31,53 @@ struct expressionHash {
     }
 };
 
+
+struct sizeInfo {
+    int upper = INT32_MAX;  // Maximum possible value.
+    int lower = INT32_MIN;  // Minimum possible value.
+    sizeInfo() = default;
+    explicit sizeInfo(int __val) { upper = lower = __val; }
+    explicit sizeInfo(long long __top, long long __low) {
+        if (__top > INT32_MAX) __top = INT32_MAX;
+        if (__low < INT32_MIN) __low = INT32_MIN;
+        upper = __top;
+        lower = __low;
+        runtime_assert(upper >= lower, "Invalid sizeInfo");
+    }
+};
+
+struct bitsInfo {
+    int top  = 31;   // 0 ~ 31. Maximum possible bit.
+    int low  = 0;    // 0 ~ 31. Minimum possible bit.
+    bitsInfo() = default;
+    explicit bitsInfo(int __val) {
+        if (__val == 0) { top = -1; low = 32; return; }
+        top = 31 - std::countl_zero((unsigned)__val);
+        low = std::countr_zero((unsigned)__val);
+    }
+    explicit bitsInfo(int __top, int __low) { top = __top; low = __low; }
+};
+
 struct knowledge {
-    enum _Const_Bound {
-        UPPER_BOUND,
-        LOWER_BOUND,
-    };
-    long long value[2] = { // avoid implicit overflow
-        [UPPER_BOUND] = INT32_MAX,
-        [LOWER_BOUND] = INT32_MIN,
-    };
+    sizeInfo size;
+    bitsInfo bits;
+    void init(sizeInfo);
+    void init(bitsInfo);
 };
 
-struct bitInfo {
-    int8_t sign = 0;    // 1 if non-negative, -1 if negative, 0 if unknown
-    int8_t top  = 31;   // 0 ~ 31. Maximum possible bit.
-    int8_t low  = 0;    // 0 ~ 31. Minimum possible bit.
-};
-
-struct GlobalValueNumberPass final :  equalSet, IRbase {
+struct GlobalValueNumberPass final : equalSet, IRbase {
   public:
     GlobalValueNumberPass(function *__func);
   private:
     using _Expr_Map = std::unordered_map <expression, definition *, expressionHash>;
     using _Pair_t   = typename _Expr_Map::value_type;
     using _Node_Map = std::unordered_map <node *, expression>;
+    using _Info_Map = std::unordered_map <definition *, knowledge>;
 
     std::vector <block *> rpo;
     _Expr_Map exprMap;  // The expression in a simplified form.
     _Node_Map nodeMap;  // The original expression before modification.
+    _Info_Map infoMap;  // The information of the definition.
     std::unordered_set <block *> visited;
 
     definition *result {};
@@ -66,7 +85,6 @@ struct GlobalValueNumberPass final :  equalSet, IRbase {
     void makeDomTree();
 
     void visitGVN(block *);
-    void updateNext(block *, block *);
     void removeHash(block *);
 
     void visitAdd(binary_stmt *,definition *,definition *); // +
@@ -81,13 +99,29 @@ struct GlobalValueNumberPass final :  equalSet, IRbase {
     void visitOr(binary_stmt *,definition *,definition *);  // |
     void visitXor(binary_stmt *,definition *,definition *); // ^
 
+    void updateAdd(binary_stmt *);
+    void updateSub(binary_stmt *);
+    void updateNeg(binary_stmt *);
+    void updateMul(binary_stmt *);
+    void updateDiv(binary_stmt *);
+    void updateMod(binary_stmt *);
+    void updateShl(binary_stmt *);
+    void updateShr(binary_stmt *);
+    void updateAnd(binary_stmt *);
+    void updateOr(binary_stmt *);
+    void updateXor(binary_stmt *);
+
     bool isAbsLess(definition *, definition *);
     bool isEqual(definition *, definition *);
     bool isNotEqual(definition *, definition *);
     bool isLessThan(definition *, definition *);
     bool isLessEqual(definition *, definition *);
 
-    bitInfo traceBit(definition *);
+    bitsInfo traceBits(definition *);
+    sizeInfo traceSize(definition *);
+    int traceSignBit(definition *);
+
+    void buildKnowledge(binary_stmt *);
 
     void visitCompare(compare_stmt *) override;
     void visitBinary(binary_stmt *) override;
