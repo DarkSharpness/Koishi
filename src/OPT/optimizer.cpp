@@ -10,6 +10,7 @@
 #include "DCE/adce.h"
 #include "CP/sccp.h"
 #include "VN/gvn.h"
+#include "LOOP/detector.h"
 
 namespace dark {
 
@@ -40,6 +41,7 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::dominantMaker::clean(&__func);
         IR::unreachableRemover { &__func };
         IR::AggressiveElimination { &__func };
+        IR::LoopNestDetector {&__func}.clean(&__func);
     }
 }
 
