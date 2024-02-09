@@ -179,6 +179,8 @@ struct IRbase {
     virtual ~IRbase() = default;
 };
 
+struct loopInfo;
+
 /**
  * @brief A block consists of:
  * 1. Phi functions
@@ -200,6 +202,7 @@ struct block final : hidden_impl {
     std::vector  <block *>      fro;    // Has these block as frontier
 
     block *idom {};                 // Immediate dominator
+    loopInfo *loop {};              // Pointer to loop info.
     std::string comments;           // Comments for this block
 
     void push_phi(phi_stmt *);          // Push back a phi function
