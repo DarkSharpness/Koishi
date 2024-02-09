@@ -6,7 +6,6 @@ namespace dark::IR {
 
 GlobalValueNumberPass::GlobalValueNumberPass(function *__func) {
     if (!checkProperty(__func)) return;
-    dominantMaker __dom { __func };    
     makeDomTree(__func);
     visitGVN(__func->data[0]);
     setProperty(__func);
@@ -85,8 +84,11 @@ void GlobalValueNumberPass::setProperty(function *__func) {
 }
 
 bool GlobalValueNumberPass::checkProperty(function *__func) {
-    runtime_assert(__func->has_cfg, "?");
-    return !__func->is_unreachable();
+    if (__func->is_unreachable()) return false;
+    runtime_assert(__func->has_cfg, "No CFG!");
+    if (!(__func->has_dom && __func->has_rpo) || __func->is_post)
+        dominantMaker { __func };
+    return true;
 }
 
 } // namespace dark::IR
