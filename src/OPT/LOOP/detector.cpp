@@ -25,6 +25,11 @@ static void buildTree(block *__block) {
             auto *__prev  = __loop->parent;
             __loop->depth = __prev ? __prev->depth + 1 : 1;
             __block->comments = std::format("loop depth: {}", __loop->depth);
+        } else {
+            using std::ranges::binary_search;
+            while (__loop && !binary_search(__loop->body, __block))
+                __loop = __loop->parent;
+            __block->loop = __loop; // Set the real pointer.
         }
     }
 }
