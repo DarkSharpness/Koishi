@@ -29,6 +29,5 @@ struct SparseConditionalPropagatior {
     std::queue <SSAinfo> SSAworklist;
 };
 
-
 } // namespace dark::IR
 

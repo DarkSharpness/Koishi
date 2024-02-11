@@ -101,7 +101,6 @@ void GlobalValueNumberPass::updateMul(binary_stmt *ctx) {
 
 static ll __maxAbs(ll __up, ll down) { return std::max(__up, -down); }
 
-
 void GlobalValueNumberPass::updateDiv(binary_stmt *ctx) {
     auto __lsize = traceSize(ctx->lval);
     auto __rsize = traceSize(ctx->rval);
@@ -186,24 +185,6 @@ void GlobalValueNumberPass::updateOr(binary_stmt *ctx) {
 }
 
 void GlobalValueNumberPass::updateXor(binary_stmt *ctx) { return updateOr(ctx); }
-
-void knowledge::init(sizeInfo __size) {
-    size = __size;
-    bits.low = 0;
-    if (size.lower >= 0)
-        bits.top = 31 - std::countl_zero((unsigned)size.upper);
-}
-
-void knowledge::init(bitsInfo __bits) {
-    bits = __bits;
-    if (bits.top != 31) {
-        size.upper = (1 << (bits.top + 1)) - 1;
-        size.lower = 1 << bits.low;
-    } else {
-        size.upper = INT32_MAX;
-        size.lower = INT32_MIN;
-    }
-}
 
 
 } // namespace dark::IR
