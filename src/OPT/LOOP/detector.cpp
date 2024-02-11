@@ -30,6 +30,8 @@ static void buildTree(block *__block) {
             while (__loop && !binary_search(__loop->body, __block))
                 __loop = __loop->parent;
             __block->loop = __loop; // Set the real pointer.
+            auto __depth = __loop ? __loop->depth : 0;
+            __block->comments = std::format("loop depth: {}", __depth);
         }
     }
 }
