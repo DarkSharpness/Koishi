@@ -26,6 +26,7 @@ struct ConstantPropagatior : SparseConditionalPropagatior {
     void visitBranch(branch_stmt *);
     void tryUpdate(statement *);
     void modifyValue(block *);
+    void killSinglePhi(function *);
 
     bool checkProperty(function *);
     void setProperty(function *);

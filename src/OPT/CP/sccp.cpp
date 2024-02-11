@@ -35,6 +35,7 @@ ConstantPropagatior::ConstantPropagatior(function *__func)
     if (!checkProperty(__func)) return;
 
     for (auto __block : __func->data) initInfo(__block);
+    killSinglePhi(__func);
     CFGworklist.push({.from = nullptr,.to = __func->data[0]});
     do {
         while (!CFGworklist.empty()) {
@@ -51,6 +52,18 @@ ConstantPropagatior::ConstantPropagatior(function *__func)
     for (auto __block : __func->data) modifyValue(__block);
 
     setProperty(__func);
+}
+
+void ConstantPropagatior::killSinglePhi(function *__func) {
+    for (auto __block : __func->data) {
+        if (__block->prev.size() == 1) {
+            for (auto __stmt : __block->phi) {
+                auto *__new = __stmt->list.at(0).init;
+                for (auto __use : defMap[__stmt->dest].useList)
+                    __use->update(__stmt->dest, __new);
+            }
+        }
+    }
 }
 
 void ConstantPropagatior::initInfo(block *__block) {
