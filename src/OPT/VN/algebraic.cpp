@@ -3,6 +3,7 @@
 #include <cmath>
 
 namespace dark::IR {
+
 using ll = long long;
 
 static binary_stmt *__get_binary(definition *__def) {
@@ -41,7 +42,7 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
      * with the new value, since it may worsen the register
      * allocation pressure afterwards.
     */
-    nodeMap.try_emplace(ctx, false, ctx->op, ctx->lval, ctx->rval);
+    nodeMap.try_emplace(ctx, expression::BINARY, ctx->op, ctx->lval, ctx->rval);
     auto __lval = getValue(ctx->lval);
     auto __rval = getValue(ctx->rval);
     /* Try to simplify the expression first. */
@@ -63,9 +64,8 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
         result = nullptr;
     } else { /* Tries to register a value, perform global value numerbing. */
         auto [__iter, __success]
-            = exprMap.try_emplace({ false, ctx->op, ctx->lval, ctx->rval }, ctx->dest);
+            = exprMap.try_emplace({ expression::BINARY, ctx->op, ctx->lval, ctx->rval }, ctx->dest);
         defMap[ctx->dest] = __iter->second;
-        if (__success) buildKnowledge(ctx);
         // Insert success if and only if defMap[ctx->dest] = ctx->dest
         // Then, in removeHash, we need to remove {false, ctx->op, ctx->lval, ctx->rval}
     }
@@ -80,7 +80,7 @@ void GlobalValueNumberPass::visitAdd
     ctx->rval = __rval;
 
     /* x + x = x * 2 */
-    if (isEqual(__lval, __rval))
+    if (__lval == __rval)
         return visitMul(ctx, __lval, __create_int(2));
 
     auto *__lbin = __get_binary(__lval);
@@ -151,7 +151,7 @@ void GlobalValueNumberPass::visitSub
     ctx->rval = __rval;
 
     /* x - x = 0 */
-    if (isEqual(__lval, __rval)) return setResult(IRpool::__zero__);
+    if (__lval == __rval) return setResult(IRpool::__zero__);
 
     auto *__lbin = __get_binary(__lval);
     auto *__rbin = __get_binary(__rval);
@@ -302,8 +302,8 @@ void GlobalValueNumberPass::visitDiv
     ctx->lval = __lval;
     ctx->rval = __rval;
 
-    if (isEqual(__lval, __rval)) return setResult(IRpool::__pos1__);
-    if (isAbsLess(__lval, __rval)) return setResult(IRpool::__zero__);
+    if (__lval == __rval) return setResult(IRpool::__pos1__);
+    // if (isAbsLess(__lval, __rval)) return setResult(IRpool::__zero__);
 
     auto *__lbin = __get_binary(__lval);
     auto *__rbin = __get_binary(__rval);
@@ -323,10 +323,10 @@ void GlobalValueNumberPass::visitDiv
             return visitNeg(ctx, __lval);
 
         /* x / (1 << c) = x >> c (when x >= 0) */
-        if (std::has_single_bit((unsigned)__rconst->value))
-            if (traceSignBit(__lval) > 0)
-                return visitShr(ctx, __lval,
-                    __create_int(std::countr_zero((unsigned)__rconst->value)));
+        // if (std::has_single_bit((unsigned)__rconst->value))
+        //     if (traceSignBit(__lval) > 0)
+        //         return visitShr(ctx, __lval,
+        //             __create_int(std::countr_zero((unsigned)__rconst->value)));
 
     } else if (__rbin && __is_negative(__rbin)) {
         /* x / (0 - x) = -1 */
@@ -380,8 +380,8 @@ void GlobalValueNumberPass::visitMod
     ctx->lval = __lval;
     ctx->rval = __rval;
 
-    if (isEqual(__lval, __rval)) return setResult(IRpool::__zero__);
-    if (isAbsLess(__lval, __rval)) return setResult(__lval);
+    if (__lval == __rval) return setResult(IRpool::__zero__);
+    // if (isAbsLess(__lval, __rval)) return setResult(__lval);
 
     auto *__lbin = __get_binary(__lval);
     auto *__rconst = __rval->as <integer_constant> ();
@@ -398,9 +398,9 @@ void GlobalValueNumberPass::visitMod
             return setResult(__create_int(__lconst->value % __rconst->value));
 
         /* x % (1 << c) = x & ((1 << c) - 1) (when x >= 0) */
-        if (std::has_single_bit((unsigned)__rconst->value))
-            if (traceSignBit(__lval) > 0)
-                return visitAnd(ctx, __lval, __create_int(__rconst->value - 1));
+        // if (std::has_single_bit((unsigned)__rconst->value))
+        //     if (traceSignBit(__lval) > 0)
+        //         return visitAnd(ctx, __lval, __create_int(__rconst->value - 1));
 
     }
 
@@ -460,11 +460,11 @@ void GlobalValueNumberPass::visitShl
         }
     }
 
-    auto __type = traceBits(__lval);
-    /* x << c = 0 (all overflowed) */
-    if (__type.low > 31 - __shift) return setResult(IRpool::__zero__);
-    /* x << c = x * (1 << c) (no overflow) */
-    if (__type.top < 31 - __shift) return visitMul(ctx, __lval, __create_int(1 << __shift));
+    // auto __type = traceBits(__lval);
+    // /* x << c = 0 (all overflowed) */
+    // if (__type.low > 31 - __shift) return setResult(IRpool::__zero__);
+    // /* x << c = x * (1 << c) (no overflow) */
+    // if (__type.top < 31 - __shift) return visitMul(ctx, __lval, __create_int(1 << __shift));
 }
 
 void GlobalValueNumberPass::visitShr
@@ -498,9 +498,9 @@ void GlobalValueNumberPass::visitShr
     }
 
     /* x >> c = 0 (all underflowed, and x >= 0) */
-    auto __type = traceBits(__lval);
-    if (__type.top < 31 && __type.top < __shift)
-        return setResult(IRpool::__zero__);
+    // auto __type = traceBits(__lval);
+    // if (__type.top < 31 && __type.top < __shift)
+    //     return setResult(IRpool::__zero__);
 }
 
 
@@ -513,7 +513,7 @@ void GlobalValueNumberPass::visitAnd
     ctx->rval = __rval;
 
     /* x & x = x */
-    if (isEqual(__lval, __rval)) return setResult(__lval);
+    if (__lval == __rval) return setResult(__lval);
 
     if (auto *__rconst = __rval->as <integer_constant> ()) {
         /* x & 0 = 0 */
@@ -547,11 +547,11 @@ void GlobalValueNumberPass::visitAnd
         }
     }
 
-    auto __lbit = traceBits(__lval);
-    auto __rbit = traceBits(__rval);
-    /* No bit intersection. */
-    if (__lbit.top < __rbit.low || __rbit.top < __lbit.low)
-        return setResult(IRpool::__zero__);
+    // auto __lbit = traceBits(__lval);
+    // auto __rbit = traceBits(__rval);
+    // /* No bit intersection. */
+    // if (__lbit.top < __rbit.low || __rbit.top < __lbit.low)
+    //      return setResult(IRpool::__zero__);
 }
 
 
@@ -565,7 +565,7 @@ void GlobalValueNumberPass::visitOr
     ctx->rval = __rval;
 
     /* x | x = x */
-    if (isEqual(__lval, __rval)) return setResult(__lval);
+    if (__lval == __rval) return setResult(__lval);
 
     if (auto *__rconst = __rval->as <integer_constant> ()) {
         /* x | 0 = x */
@@ -619,7 +619,7 @@ void GlobalValueNumberPass::visitXor
     ctx->rval = __rval;
 
     /* x ^ x = 0 */
-    if (isEqual(__lval, __rval)) return setResult(IRpool::__zero__);
+    if (__lval == __rval) return setResult(IRpool::__zero__);
 
     if (auto *__rconst = __rval->as <integer_constant> ()) {
         /* x ^ 0 = x */

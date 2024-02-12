@@ -26,11 +26,14 @@ void GlobalValueNumberPass::makeDomTree(function *__func) {
 }
 
 void GlobalValueNumberPass::visitGVN(block *__block) {
-    for (auto __stmt : __block->phi)    visitPhi(__stmt);
-    for (auto __stmt : __block->data)   visit(__stmt);
+    for (auto __stmt : __block->phi) visitPhi(__stmt);
+    for (auto __stmt : __block->data) visit(__stmt);
     visit(__block->flow);
     visited.insert(__block);
-    for (auto __next : __block->fro)    visitGVN(__next);
+    for (auto __next : __block->fro) {
+        visitGVN(__next);
+    }
+
     visited.erase(__block);
     return removeHash(__block);
 }
@@ -78,7 +81,6 @@ void GlobalValueNumberPass::visitJump(jump_stmt *) {}
 void GlobalValueNumberPass::visitUnreachable(unreachable_stmt *) {}
 void GlobalValueNumberPass::visitReturn(return_stmt *) {}
 
-
 void GlobalValueNumberPass::setProperty(function *__func) {
     __func->has_fro = false;
 }
@@ -89,6 +91,12 @@ bool GlobalValueNumberPass::checkProperty(function *__func) {
     if (!(__func->has_dom && __func->has_rpo) || __func->is_post)
         dominantMaker { __func };
     return true;
+}
+
+definition *GlobalValueNumberPass::getValue(definition *__def)  {
+    auto __tmp = __def->as <temporary> ();
+    if (!__tmp) return __def;
+    return defMap.try_emplace(__tmp, __def).first->second;
 }
 
 } // namespace dark::IR
