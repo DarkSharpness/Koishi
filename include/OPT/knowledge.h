@@ -23,7 +23,7 @@ struct bitsInfo {
     int32_t state;  // 0 = false    1 = true
     int32_t valid;  // 0 = invalid  1 = certain
     bitsInfo() = default;
-    explicit bitsInfo(int __val) : state(__val), valid(-1) {}
+    explicit bitsInfo(int __val) : state(__val), valid(~0) {}
     explicit bitsInfo(int32_t __state, int32_t __valid)
         : state(__state), valid(__valid) {}
     friend bool operator <= (bitsInfo,bitsInfo);

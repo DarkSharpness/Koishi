@@ -105,12 +105,22 @@ static auto updateShr(binary_stmt *ctx, bitsInfo __lhs, sizeInfo __rhs)
 
 static auto updateAnd(binary_stmt *ctx, bitsInfo __lhs, bitsInfo __rhs)
     -> bitsInfo {
-    return bitsInfo { __lhs.state & __rhs.state, __lhs.valid & __rhs.valid };
+    return bitsInfo {
+        __lhs.state & __rhs.state,
+        // LHS valid 0 or RHS valid 0 or (LHS & RHS valid 1)
+        ((~__lhs.state & __lhs.valid) | (~__rhs.state & __rhs.valid)) |
+        (( __lhs.state & __lhs.valid) & ( __rhs.state & __rhs.valid))
+    };
 }
 
 static auto updateOr(binary_stmt *ctx, bitsInfo __lhs, bitsInfo __rhs)
     -> bitsInfo {
-    return bitsInfo { __lhs.state | __rhs.state, __lhs.valid & __rhs.valid };
+    return bitsInfo {
+        __lhs.state | __rhs.state,
+        // LHS valid 1 or RHS valid 1 or (LHS & RHS valid 0)
+        ((~__lhs.state & __lhs.valid) & (~__rhs.state & __rhs.valid)) |
+        (( __lhs.state & __lhs.valid) | ( __rhs.state & __rhs.valid))
+    };
 }
 
 static auto updateXor(binary_stmt *ctx, bitsInfo __lhs, bitsInfo __rhs)
@@ -264,14 +274,13 @@ void KnowledgePropagatior::visitPhi(phi_stmt *ctx) {
 
 void KnowledgePropagatior::visitUnreachable(unreachable_stmt *) {}
 
-
 /**
  * @return Whether lhs is no stronger than rhs.
  * 1. lhs state is contained within rhs state in bits.
  * 2. lhs valid bits are contained within rhs valid bits.
  */
 bool operator <= (bitsInfo __lhs, bitsInfo __rhs) {
-    return (__lhs.state & __rhs.state) == __lhs.state
+    return (__lhs.valid & __rhs.valid) == __lhs.valid
         && (__lhs.valid & __lhs.state) == (__rhs.valid & __lhs.state);
 }
 /**

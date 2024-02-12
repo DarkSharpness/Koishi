@@ -4,7 +4,7 @@
 
 namespace dark::IR {
 
-struct KnowledgePropagatior : SparseConditionalPropagatior, IRbase{
+struct KnowledgePropagatior : SparseConditionalPropagatior, IRbase {
   public:
     KnowledgePropagatior(function *);
 
@@ -12,7 +12,7 @@ struct KnowledgePropagatior : SparseConditionalPropagatior, IRbase{
     struct defInfo : knowledge {
         enum defState { // Have 3 trials at most.
             UNDEFINED = 0,  // Best
-            UNCERTAIN = 3,  // Worst
+            UNCERTAIN = 5,  // Worst
         };
         int type;
         bool is_const() const {
