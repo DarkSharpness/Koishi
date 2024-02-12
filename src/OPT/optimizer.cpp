@@ -9,14 +9,15 @@
 #include "DCE/dce.h"
 #include "DCE/adce.h"
 #include "CP/sccp.h"
-#include "VN/gvn.h"
+// #include "VN/gvn.h"
 #include "LOOP/detector.h"
+#include "CP/sckp.h"
+#include "CM/gcm.h"
 
 namespace dark {
 
 static struct {
     std::size_t level = 2;
-
 } optimize_info;
 
 static void DoNotOptimize(IR::IRbuilder *ctx) {
@@ -35,13 +36,15 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::dominantMaker::clean(&__func);
         IR::unreachableRemover { &__func };
         IR::AggressiveElimination { &__func };
-        IR::GlobalValueNumberPass { &__func };
+        IR::KnowledgePropagatior { &__func };
+        IR::unreachableRemover { &__func };
         IR::DeadCodeEliminator { &__func };
+        IR::dominantMaker { &__func };
         IR::ConstantPropagatior { &__func };
-        IR::dominantMaker::clean(&__func);
         IR::unreachableRemover { &__func };
         IR::AggressiveElimination { &__func };
-        IR::LoopNestDetector {&__func}.clean(&__func);
+        IR::LoopNestDetector { &__func };
+        IR::GlobalCodeMotionPass { &__func };
     }
 }
 
