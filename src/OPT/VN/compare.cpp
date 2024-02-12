@@ -143,6 +143,9 @@ void GlobalValueNumberPass::compareInteger(compare_stmt *ctx) {
         auto __lbin = __get_binary(ctx->lval);
         if (!__lbin) return;
 
+        // Only optimize those used once!
+        // Optimization on some temporary is better.
+        if (useCount[__lbin->dest] > 1) return;
         if (auto __rval = __lbin->rval->as <integer_constant> ()) {
             if (__lbin->op == __lbin->ADD) {
                 /* x + c op d <=> x  */
@@ -206,7 +209,6 @@ void GlobalValueNumberPass::compareInteger(compare_stmt *ctx) {
 
 void GlobalValueNumberPass::visitCompare(compare_stmt *ctx) {
     nodeMap.try_emplace(ctx, expression::COMPARE, ctx->op, ctx->lval, ctx->rval);
-    return;
     updateCompare(ctx);
     if (result != nullptr) {
         defMap[ctx->dest] = result;
