@@ -33,6 +33,8 @@ static void buildTree(block *__block) {
             auto __depth = __loop ? __loop->depth : 0;
             __block->comments = std::format("loop depth: {}", __depth);
         }
+    } else {
+        __block->comments = "loop depth: 0";
     }
 }
 
