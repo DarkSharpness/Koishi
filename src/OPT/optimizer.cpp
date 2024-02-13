@@ -13,6 +13,7 @@
 #include "LOOP/detector.h"
 #include "CP/sckp.h"
 #include "CM/gcm.h"
+#include "EARLY/gcr.h"
 
 namespace dark {
 
@@ -27,9 +28,11 @@ static void DoNotOptimize(IR::IRbuilder *ctx) {
 }
 
 static void DoOptimize(IR::IRbuilder *ctx) {
+    DoNotOptimize(ctx); // First, remove unreachable code.
+    IR::GlobalConstantReplacer { ctx };
+
     auto &functions = ctx->global_functions;
     for (auto &__func : functions) {
-        IR::unreachableRemover { &__func };
         IR::mem2regPass { &__func };
         IR::DeadCodeEliminator { &__func };
         IR::ConstantPropagatior { &__func };
@@ -52,8 +55,6 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::DeadCodeEliminator { &__func };
         IR::ConstantPropagatior { &__func };
         IR::unreachableRemover { &__func };
-
-
     }
 }
 
