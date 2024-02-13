@@ -42,7 +42,7 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
      * with the new value, since it may worsen the register
      * allocation pressure afterwards.
     */
-    nodeMap.try_emplace(ctx, expression::BINARY, ctx->op, ctx->lval, ctx->rval);
+    nodeMap.try_emplace(ctx, ctx);
     auto __lval = getValue(ctx->lval);
     auto __rval = getValue(ctx->rval);
     /* Try to simplify the expression first. */
@@ -63,8 +63,7 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
         defMap[ctx->dest] = result;
         result = nullptr;
     } else { /* Tries to register a value, perform global value numerbing. */
-        auto [__iter, __success]
-            = exprMap.try_emplace({ expression::BINARY, ctx->op, ctx->lval, ctx->rval }, ctx->dest);
+        auto [__iter, __success] = exprMap.try_emplace(ctx, ctx->dest);
         defMap[ctx->dest] = __iter->second;
         // Insert success if and only if defMap[ctx->dest] = ctx->dest
         // Then, in removeHash, we need to remove {false, ctx->op, ctx->lval, ctx->rval}

@@ -18,6 +18,10 @@ struct expression {
     definition *lhs;
     definition *rhs;
     friend bool operator == (expression, expression) = default;
+
+    expression(get_stmt *);
+    expression(binary_stmt *);
+    expression(compare_stmt *);
 };
 
 struct expressionHash {
@@ -31,18 +35,28 @@ struct expressionHash {
 struct GlobalValueNumberPass final : IRbase {
   public:
     GlobalValueNumberPass(function *__func);
+    static bool mayAliasing(definition *, definition *);
   private:
 
     using _Expr_Map = std::unordered_map <expression, definition *, expressionHash>;
     using _Pair_t   = typename _Expr_Map::value_type;
     using _Node_Map = std::unordered_map <node *, expression>;
-    using _Info_Map = std::unordered_map <definition *, knowledge>;
 
     _Expr_Map exprMap;  // The expression in a simplified form.
     _Node_Map nodeMap;  // The original expression before modification.
-    _Info_Map infoMap;  // The information of the definition.
+
     std::unordered_set <block *> visited;
     std::unordered_map <temporary *, definition *> defMap;
+    std::unordered_map <non_literal *, size_t> useCount;
+
+    struct memInfo {
+        definition *val     {};
+        store_stmt *last    {};
+    };
+
+    std::unordered_map <definition *, memInfo> memMap;
+    std::unordered_set <store_stmt *> deadStore;
+
 
     definition *result {};
     void setResult(definition *__def) { result = __def; }
@@ -67,6 +81,7 @@ struct GlobalValueNumberPass final : IRbase {
     void compareBoolean(compare_stmt *);
     void compareInteger(compare_stmt *);
 
+    void clearMemoryInfo();
 
     bool isAbsLess(definition *, definition *);
     bool isEqual(definition *, definition *);
@@ -86,10 +101,11 @@ struct GlobalValueNumberPass final : IRbase {
     void visitPhi(phi_stmt *) override;
     void visitUnreachable(unreachable_stmt *) override;
 
+    void collectUse(function *);
     void setProperty(function *);
     bool checkProperty(function *);
 
-    definition *getValue(definition *__def);
+    definition *getValue(definition *);
 };
 
 

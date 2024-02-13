@@ -208,14 +208,13 @@ void GlobalValueNumberPass::compareInteger(compare_stmt *ctx) {
 
 
 void GlobalValueNumberPass::visitCompare(compare_stmt *ctx) {
-    nodeMap.try_emplace(ctx, expression::COMPARE, ctx->op, ctx->lval, ctx->rval);
+    nodeMap.try_emplace(ctx, ctx);
     updateCompare(ctx);
     if (result != nullptr) {
         defMap[ctx->dest] = result;
         result = nullptr;
     } else {
-        auto [__iter, __success]
-            = exprMap.try_emplace({ expression::COMPARE, ctx->op, ctx->lval, ctx->rval }, ctx->dest);
+        auto [__iter, __success] = exprMap.try_emplace(ctx, ctx->dest);
         defMap[ctx->dest] = __iter->second;
         // Insert success if and only if defMap[ctx->dest] = ctx->dest
         // Then, in removeHash, we need to remove {false, ctx->op, ctx->lval, ctx->rval}

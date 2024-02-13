@@ -7,9 +7,21 @@ namespace dark::IR {
 GlobalValueNumberPass::GlobalValueNumberPass(function *__func) {
     if (!checkProperty(__func)) return;
     makeDomTree(__func);
+    collectUse(__func);
     visitGVN(__func->data[0]);
     setProperty(__func);
 }
+
+void GlobalValueNumberPass::collectUse(function *__func) {
+    auto &&__operation = [this](statement *__node) {
+        for (auto __use : __node->get_use())
+            if (auto __var = __use->as <non_literal> ())
+                useCount[__var]++;
+    };
+    for (auto __block : __func->data) visitBlock(__block, __operation);
+}
+
+
 
 /**
  * @brief Use the space of frontier to store the
@@ -26,13 +38,14 @@ void GlobalValueNumberPass::makeDomTree(function *__func) {
 }
 
 void GlobalValueNumberPass::visitGVN(block *__block) {
+    clearMemoryInfo();
     for (auto __stmt : __block->phi) visitPhi(__stmt);
     for (auto __stmt : __block->data) visit(__stmt);
     visit(__block->flow);
     visited.insert(__block);
-    for (auto __next : __block->fro) {
-        visitGVN(__next);
-    }
+    auto __mmap = memMap;
+
+    for (auto __next : __block->fro) visitGVN(__next);
 
     visited.erase(__block);
     return removeHash(__block);
@@ -42,7 +55,13 @@ void GlobalValueNumberPass::removeHash(block *__block) {
     for (auto __stmt : __block->data) {
         if (auto __bin = __stmt->as <binary_stmt> ()) {
             if (defMap[__bin->dest] == __bin->dest)
-                exprMap.erase({ false, __bin->op, __bin->lval, __bin->rval});
+                exprMap.erase(__bin);
+        } else if (auto __cmp = __stmt->as <compare_stmt> ()) {
+            if (defMap[__cmp->dest] == __cmp->dest)
+                exprMap.erase(__cmp);
+        } else if (auto __get = __stmt->as <get_stmt> ()) {
+            if (defMap[__get->dest] == __get->dest)
+                exprMap.erase(__get);
         }
     }
 }
@@ -69,18 +88,6 @@ void GlobalValueNumberPass::visitPhi(phi_stmt *__phi) {
     defMap[__def] = __tmp;
 }
 
-/**
- * TODO: Spread the condition to the next block and 
- * its domSet.
- * Use a stack to maintain the condition.
- * like %x != 0, %y < 0.
- * This can be used to optimize the condition branch. 
- */
-void GlobalValueNumberPass::visitBranch(branch_stmt *) {}
-void GlobalValueNumberPass::visitJump(jump_stmt *) {}
-void GlobalValueNumberPass::visitUnreachable(unreachable_stmt *) {}
-void GlobalValueNumberPass::visitReturn(return_stmt *) {}
-
 void GlobalValueNumberPass::setProperty(function *__func) {
     __func->has_fro = false;
 }
@@ -98,5 +105,15 @@ definition *GlobalValueNumberPass::getValue(definition *__def)  {
     if (!__tmp) return __def;
     return defMap.try_emplace(__tmp, __def).first->second;
 }
+
+expression::expression(get_stmt *__get)
+: type(GETADDR), op(__get->member), lhs(__get->addr), rhs(__get->index) {}
+
+expression::expression(binary_stmt *__bin)
+: type(BINARY), op(__bin->op), lhs(__bin->lval), rhs(__bin->rval) {}
+
+expression::expression(compare_stmt *__cmp)
+: type(COMPARE), op(__cmp->op), lhs(__cmp->lval), rhs(__cmp->rval) {}
+
 
 } // namespace dark::IR
