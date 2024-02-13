@@ -1,11 +1,12 @@
 #pragma once
 #include "IRbase.h"
 #include "knowledge.h"
+#include "VN/mem.h"
+#include "VN/algebraic.h"
 #include <cstdint>
 #include <unordered_set>
 
 namespace dark::IR {
-
 
 struct expression {
     enum {
@@ -32,62 +33,21 @@ struct expressionHash {
     }
 };
 
-struct GlobalValueNumberPass final : IRbase {
+struct GlobalValueNumberPass final : IRbase , memorySimplifier, algebraicSimplifier {
   public:
     GlobalValueNumberPass(function *__func);
-    static bool mayAliasing(definition *, definition *);
   private:
 
     using _Expr_Map = std::unordered_map <expression, definition *, expressionHash>;
-    using _Pair_t   = typename _Expr_Map::value_type;
-    using _Node_Map = std::unordered_map <node *, expression>;
 
     _Expr_Map exprMap;  // The expression in a simplified form.
-    _Node_Map nodeMap;  // The original expression before modification.
 
     std::unordered_set <block *> visited;
     std::unordered_map <temporary *, definition *> defMap;
-    std::unordered_map <non_literal *, size_t> useCount;
-
-    struct memInfo {
-        definition *val     {};
-        store_stmt *last    {};
-    };
-
-    std::unordered_map <definition *, memInfo> memMap;
-    std::unordered_set <store_stmt *> deadStore;
-
-
-    definition *result {};
-    void setResult(definition *__def) { result = __def; }
-    static void makeDomTree(function *);
 
     void visitGVN(block *);
     void removeHash(block *);
-
-    void visitAdd(binary_stmt *,definition *,definition *); // +
-    void visitSub(binary_stmt *,definition *,definition *); // -
-    void visitNeg(binary_stmt *,definition *);              // -
-    void visitMul(binary_stmt *,definition *,definition *); // *
-    void visitDiv(binary_stmt *,definition *,definition *); // /
-    void visitMod(binary_stmt *,definition *,definition *); // %
-    void visitShl(binary_stmt *,definition *,definition *); // <<
-    void visitShr(binary_stmt *,definition *,definition *); // >>
-    void visitAnd(binary_stmt *,definition *,definition *); // &
-    void visitOr(binary_stmt *,definition *,definition *);  // |
-    void visitXor(binary_stmt *,definition *,definition *); // ^
-
-    void updateCompare(compare_stmt *);
-    void compareBoolean(compare_stmt *);
-    void compareInteger(compare_stmt *);
-
-    void clearMemoryInfo();
-
-    bool isAbsLess(definition *, definition *);
-    bool isEqual(definition *, definition *);
-    bool isNotEqual(definition *, definition *);
-    bool isLessThan(definition *, definition *);
-    bool isLessEqual(definition *, definition *);
+    void updateValue(temporary *, definition *);
 
     void visitCompare(compare_stmt *) override;
     void visitBinary(binary_stmt *) override;
@@ -101,11 +61,11 @@ struct GlobalValueNumberPass final : IRbase {
     void visitPhi(phi_stmt *) override;
     void visitUnreachable(unreachable_stmt *) override;
 
-    void collectUse(function *);
+    static void makeDomTree(function *);
     void setProperty(function *);
     bool checkProperty(function *);
+    void removeDead(function *);
 
-    definition *getValue(definition *);
 };
 
 

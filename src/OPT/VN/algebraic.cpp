@@ -1,4 +1,5 @@
 #include "VN/gvn.h"
+#include "VN/algebraic.h"
 #include "IRnode.h"
 #include <cmath>
 
@@ -35,42 +36,7 @@ static inline void __formatize(definition *&__lval, definition *&__rval) {
 }
 
 
-void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
-    /**
-     * This is intended to hold the old value.
-     * We may not necessarily update the value of the expression
-     * with the new value, since it may worsen the register
-     * allocation pressure afterwards.
-    */
-    nodeMap.try_emplace(ctx, ctx);
-    auto __lval = getValue(ctx->lval);
-    auto __rval = getValue(ctx->rval);
-    /* Try to simplify the expression first. */
-    switch (ctx->op) {
-        case ctx->ADD: visitAdd(ctx, __lval, __rval); break;
-        case ctx->SUB: visitSub(ctx, __lval, __rval); break;
-        case ctx->MUL: visitMul(ctx, __lval, __rval); break;
-        case ctx->DIV: visitDiv(ctx, __lval, __rval); break;
-        case ctx->MOD: visitMod(ctx, __lval, __rval); break;
-        case ctx->SHL: visitShl(ctx, __lval, __rval); break;
-        case ctx->SHR: visitShr(ctx, __lval, __rval); break;
-        case ctx->AND: visitAnd(ctx, __lval, __rval); break;
-        case ctx->OR:  visitOr(ctx, __lval, __rval);  break;
-        case ctx->XOR: visitXor(ctx, __lval, __rval); break;
-    }
-
-    if (result != nullptr) { /* Equal to another value. */
-        defMap[ctx->dest] = result;
-        result = nullptr;
-    } else { /* Tries to register a value, perform global value numerbing. */
-        auto [__iter, __success] = exprMap.try_emplace(ctx, ctx->dest);
-        defMap[ctx->dest] = __iter->second;
-        // Insert success if and only if defMap[ctx->dest] = ctx->dest
-        // Then, in removeHash, we need to remove {false, ctx->op, ctx->lval, ctx->rval}
-    }
-}
-
-void GlobalValueNumberPass::visitAdd
+void algebraicSimplifier::visitAdd
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     __formatize(__lval, __rval);
 
@@ -138,7 +104,7 @@ void GlobalValueNumberPass::visitAdd
     }
 }
 
-void GlobalValueNumberPass::visitSub
+void algebraicSimplifier::visitSub
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     if (auto __lit = __rval->as <integer_constant> ())
         return visitAdd(ctx, __lval, __create_int(-__lit->value));
@@ -212,7 +178,7 @@ void GlobalValueNumberPass::visitSub
     }
 }
 
-void GlobalValueNumberPass::visitNeg(binary_stmt *ctx, definition *__rval) {
+void algebraicSimplifier::visitNeg(binary_stmt *ctx, definition *__rval) {
     ctx->op = ctx->SUB;
     ctx->lval = IRpool::__zero__;
     ctx->rval = __rval;
@@ -240,7 +206,7 @@ void GlobalValueNumberPass::visitNeg(binary_stmt *ctx, definition *__rval) {
 }
 
 
-void GlobalValueNumberPass::visitMul
+void algebraicSimplifier::visitMul
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     __formatize(__lval, __rval);
 
@@ -292,7 +258,7 @@ void GlobalValueNumberPass::visitMul
 }
 
 
-void GlobalValueNumberPass::visitDiv
+void algebraicSimplifier::visitDiv
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     /* Undefined behavior. */
     if (__rval == IRpool::__zero__) return setResult(IRpool::create_undefined({},1));
@@ -370,7 +336,7 @@ void GlobalValueNumberPass::visitDiv
 }
 
 
-void GlobalValueNumberPass::visitMod
+void algebraicSimplifier::visitMod
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     /* Undefined behavior. */
     if (__rval == IRpool::__zero__) return setResult(IRpool::create_undefined({},1));
@@ -423,7 +389,7 @@ void GlobalValueNumberPass::visitMod
         return visitMod(ctx, __lbin->rval, __rbin->rval);
 }
 
-void GlobalValueNumberPass::visitShl
+void algebraicSimplifier::visitShl
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     ctx->op = ctx->SHL;
     ctx->lval = __lval;
@@ -466,7 +432,7 @@ void GlobalValueNumberPass::visitShl
     // if (__type.top < 31 - __shift) return visitMul(ctx, __lval, __create_int(1 << __shift));
 }
 
-void GlobalValueNumberPass::visitShr
+void algebraicSimplifier::visitShr
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     ctx->op = ctx->SHR;
     ctx->lval = __lval;
@@ -503,7 +469,7 @@ void GlobalValueNumberPass::visitShr
 }
 
 
-void GlobalValueNumberPass::visitAnd
+void algebraicSimplifier::visitAnd
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     __formatize(__lval, __rval);
 
@@ -554,7 +520,7 @@ void GlobalValueNumberPass::visitAnd
 }
 
 
-void GlobalValueNumberPass::visitOr
+void algebraicSimplifier::visitOr
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     /* First, formatize the expression. */
     __formatize(__lval, __rval);
@@ -608,7 +574,7 @@ void GlobalValueNumberPass::visitOr
 }
 
 
-void GlobalValueNumberPass::visitXor
+void algebraicSimplifier::visitXor
     (binary_stmt *ctx, definition *__lval, definition *__rval) {
     /* First, formatize the expression. */
     __formatize(__lval, __rval);
@@ -642,8 +608,6 @@ void GlobalValueNumberPass::visitXor
         }
     }
 }
-
-
 
 
 } // namespace dark::IR

@@ -1,4 +1,4 @@
-#include "VN/gvn.h"
+#include "VN/mem.h"
 #include "IRnode.h"
 #include <algorithm>
 
@@ -59,10 +59,15 @@ static bool __analyzeMember(non_literal *__lhs, non_literal *__rhs) {
     auto *__lget = __lhs->as <temporary> ()->def->as <get_stmt> ();
     auto *__rget = __rhs->as <temporary> ()->def->as <get_stmt> ();
     if (__lget->member != __rget->member) return false;
-    return GlobalValueNumberPass::mayAliasing(__lget->addr, __rget->addr);
+    return memorySimplifier::mayAliasing(__lget->addr, __rget->addr);
 }
 
-bool GlobalValueNumberPass::mayAliasing(definition *__l, definition *__r) {
+/**
+ * @return A conservative analysis of whether
+ * the two non-literal may be aliasing.
+ * If there's no way to determine, return true.
+ */
+bool memorySimplifier::mayAliasing(definition *__l, definition *__r) {
     if (__l == __r) return true;
     auto __lhs = __l->as <non_literal> ();
     auto __rhs = __r->as <non_literal> ();
@@ -87,37 +92,46 @@ bool GlobalValueNumberPass::mayAliasing(definition *__l, definition *__r) {
     }
 }
 
-
-void GlobalValueNumberPass::clearMemoryInfo() { memMap.clear(); }
-
-void GlobalValueNumberPass::visitCall(call_stmt *__call) {
-    for (auto __use : __call->args) {
-        auto __val = getValue(__use);
-        if (__use == __val) continue;
-        __call->update(__use, __val);
-    }
-    // Assume the worst! No load store iff builtin.
+/**
+ * @brief Analyze the influence of a function call.
+ * If builtin, no extra load/store will be done.
+ * We may assume that the function call will not
+ * change the memory state.
+ * 
+ * Otherwise, we may need function attributes.
+ * TODO: Add function attribute support.
+ * @return The result of the function call.
+ */
+definition *memorySimplifier::analyzeCall(call_stmt *__call) {
     if (!__call->func->is_builtin) clearMemoryInfo();
+    return __call->dest;
 }
 
-void GlobalValueNumberPass::visitLoad(load_stmt *__load) {
-    auto *__addr = __load->addr = getValue(__load->addr);
+/**
+ * @brief Analyze the influence of a load statement.
+ * @return The result of the load statement (loaded value).
+ */
+definition *memorySimplifier::analyzeLoad(load_stmt *__load) {
+    auto *__addr = __load->addr;
     auto *__dest = __load->dest;
+    definition *__ret = __dest;
 
     auto &__info = memMap[__addr];
-    if (__info.val) defMap[__dest] = __info.val;
-    else            __info.val     = __dest;
+    if (__info.val) __ret       = __info.val;
+    else            __info.val  = __dest;
 
     /* Update the influence. */
     for (auto &[__def , __mem] : memMap) {
         if (__addr == __def) continue;
         if (mayAliasing(__addr, __def)) __mem.last = {}; // Last store may be used.
     }
+
+    return __ret;   // Return the loaded value.
 }
 
-void GlobalValueNumberPass::visitStore(store_stmt *__store) {
-    auto *__src  = __store->src_ = getValue(__store->src_);
-    auto *__addr = __store->addr = getValue(__store->addr);
+void memorySimplifier::analyzeStore(store_stmt *__store) {
+    auto *__src  = __store->src_;
+    auto *__addr = __store->addr;
 
     auto &__info = memMap[__addr];
     if (auto __last = __info.last)  deadStore.insert(__last);   // Useless last store.
@@ -134,12 +148,7 @@ void GlobalValueNumberPass::visitStore(store_stmt *__store) {
     }
 }
 
-void GlobalValueNumberPass::visitGet(get_stmt *__get) {
-    __get->addr  = getValue(__get->addr);
-    __get->index = getValue(__get->index);
-    auto [__iter, __success] = exprMap.try_emplace(__get, __get->dest);
-    defMap[__get->dest] = __iter->second;
-}
+void memorySimplifier::clearMemoryInfo() { memMap.clear(); }
 
 
 } // namespace dark::IR

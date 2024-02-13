@@ -1,4 +1,4 @@
-#include "VN/gvn.h"
+#include "VN/algebraic.h"
 #include "IRnode.h"
 #include <cstdint>
 
@@ -61,7 +61,7 @@ static bool __isNot(compare_stmt *ctx) {
         && ctx->rval == IRpool::__false__;
 }
 
-void GlobalValueNumberPass::updateCompare(compare_stmt *ctx) {
+void algebraicSimplifier::updateCompare(compare_stmt *ctx) {
     auto __type = ctx->lval->get_value_type();
     if (__type == typeinfo {int_type::ptr()}) {
         return compareInteger(ctx);
@@ -75,7 +75,7 @@ void GlobalValueNumberPass::updateCompare(compare_stmt *ctx) {
 /* bool == 1  <=> bool  */
 /* bool == 0  <=> !bool */
 /* bool != 1  <=> !bool */
-void GlobalValueNumberPass::compareBoolean(compare_stmt *ctx) {
+void algebraicSimplifier::compareBoolean(compare_stmt *ctx) {
     if (ctx->lval->as <boolean_constant> ())
         std::swap(ctx->lval, ctx->rval);
 
@@ -105,7 +105,7 @@ void GlobalValueNumberPass::compareBoolean(compare_stmt *ctx) {
 /* x - y op x - z   <=> z op y     */
 /* y - x op z - x   <=> y op z     */
 /* x * c op y * c   <=> x op y (or y op x) */
-void GlobalValueNumberPass::compareInteger(compare_stmt *ctx) {
+void algebraicSimplifier::compareInteger(compare_stmt *ctx) {
     if (ctx->lval->as <integer_constant> ())
         std::swap(ctx->lval, ctx->rval),
         ctx->op = __swapOp(ctx->op);
@@ -145,7 +145,7 @@ void GlobalValueNumberPass::compareInteger(compare_stmt *ctx) {
 
         // Only optimize those used once!
         // Optimization on some temporary is better.
-        if (useCount[__lbin->dest] > 1) return;
+        if (useMap[__lbin->dest].size() > 1) return;
         if (auto __rval = __lbin->rval->as <integer_constant> ()) {
             if (__lbin->op == __lbin->ADD) {
                 /* x + c op d <=> x  */
@@ -206,19 +206,14 @@ void GlobalValueNumberPass::compareInteger(compare_stmt *ctx) {
     }
 }
 
-
-void GlobalValueNumberPass::visitCompare(compare_stmt *ctx) {
-    nodeMap.try_emplace(ctx, ctx);
-    updateCompare(ctx);
-    if (result != nullptr) {
-        defMap[ctx->dest] = result;
-        result = nullptr;
-    } else {
-        auto [__iter, __success] = exprMap.try_emplace(ctx, ctx->dest);
-        defMap[ctx->dest] = __iter->second;
-        // Insert success if and only if defMap[ctx->dest] = ctx->dest
-        // Then, in removeHash, we need to remove {false, ctx->op, ctx->lval, ctx->rval}
-    }
+/* Collect the use count of the non-literals. */
+void algebraicSimplifier::collectUse(function *__func) {
+    auto &&__operation = [this](statement *__node) {
+        for (auto __use : __node->get_use())
+            if (auto __tmp = __use->as <temporary> ())
+                useMap[__tmp].push_back(__node);
+    };
+    for (auto __block : __func->data) visitBlock(__block, __operation);
 }
 
 
