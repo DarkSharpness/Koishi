@@ -62,6 +62,7 @@ static bool __isNot(compare_stmt *ctx) {
 }
 
 void algebraicSimplifier::updateCompare(compare_stmt *ctx) {
+    return;
     auto __type = ctx->lval->get_value_type();
     if (__type == typeinfo {int_type::ptr()}) {
         return compareInteger(ctx);
