@@ -6,7 +6,7 @@ namespace dark::IR {
 
 struct KnowledgePropagatior : SparseConditionalPropagatior, IRbase {
   public:
-    KnowledgePropagatior(function *);
+    KnowledgePropagatior(function *, bool = false);
 
   private:
     struct defInfo : knowledge {
@@ -14,7 +14,10 @@ struct KnowledgePropagatior : SparseConditionalPropagatior, IRbase {
             UNDEFINED = 0,  // Best
             UNCERTAIN = 5,  // Worst
         };
-        int type;
+        defState type;
+        friend void operator ++(defState &state,int) {
+            state = static_cast <defState>(state + 1);
+        }
         bool is_const() const {
             return bits.valid == -1
                 && size.upper == size.lower;
@@ -22,12 +25,15 @@ struct KnowledgePropagatior : SparseConditionalPropagatior, IRbase {
         /* If constant, this is the constant value. */
         int value() const { return size.lower; }
         std::vector <statement *> useList;
+        bool is_undefined() const { return type == UNDEFINED; }
+        bool is_uncertain() const { return type == UNCERTAIN; }
     };
 
     std::unordered_map <temporary *, defInfo> defMap;
     std::unordered_map <block *, Blockinfo> blockMap;
 
     bool updated {};
+    bool strengthReduced {};
 
     void initInfo(block *);
     void updateCFG(CFGinfo);

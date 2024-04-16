@@ -50,7 +50,7 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::unreachableRemover { &__func };
         IR::AggressiveElimination { &__func };
         IR::CFGsimplifier { &__func };
-        
+
         IR::LoopNestDetector { &__func };
         IR::KnowledgePropagatior { &__func };
         IR::GlobalCodeMotionPass { &__func };
@@ -59,6 +59,8 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::ConstantPropagatior { &__func };
         IR::unreachableRemover { &__func };
         IR::DeadCodeEliminator { &__func };
+
+        IR::KnowledgePropagatior { &__func , true };
     }
 }
 

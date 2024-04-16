@@ -19,7 +19,12 @@ static definition *__merge_defs(definition *__lhs, definition *__rhs) {
     return __lhs == __rhs ? __lhs : nullptr;
 }
 
-KnowledgePropagatior::KnowledgePropagatior(function *__func) {
+/**
+ * @brief A class which can simply analyze the size of scalar type.
+ * It can also perform some easy strength reduction.
+ */
+KnowledgePropagatior::KnowledgePropagatior
+    (function *__func, bool strengthReduced) : strengthReduced(strengthReduced) {
     if (!checkProperty(__func)) return;
 
     for (auto __block : __func->data) initInfo(__block);
@@ -134,13 +139,30 @@ void KnowledgePropagatior::modifyValue(block *__block) {
             auto __tmp = __old->as <temporary> ();
             if (!__tmp) continue;
             auto &__info = defMap[__tmp];
-            if (__info.type == __info.UNDEFINED) {
+            if (__info.is_undefined()) {
                 __node->update(__old, IRpool::create_undefined(__tmp->type));
             } else if (__info.is_const()) {
                 if (__tmp->type == typeinfo{ bool_type::ptr() , 0 })
                     __node->update(__old, IRpool::create_boolean(__info.value()));
                 else
                     __node->update(__old, IRpool::create_integer(__info.value()));
+            } else if (strengthReduced && !__info.is_uncertain()) {
+                if (auto __bin = __node->as <binary_stmt> ()) {
+                    auto __rhs = __bin->rval->as <integer_constant> ();
+                    if (!__rhs || __info.size.lower < 0) continue;
+                    using _Tp = decltype(__bin->op);
+                    using enum _Tp;
+                    // Division by power of 2
+                    if (__bin->op == DIV && std::has_single_bit<unsigned>(__rhs->value)) {
+                        __bin->op = SHR;
+                        auto __log = std::countr_zero<unsigned>(__rhs->value);
+                        __bin->rval = IRpool::create_integer(__log);
+                    } else if (__bin->op == MOD && std::has_single_bit<unsigned>(__rhs->value)) {
+                        __bin->op = AND;
+                        auto __msk = __rhs->value - 1;
+                        __bin->rval = IRpool::create_integer(__msk);
+                    }
+                }
             }
         }
     };
