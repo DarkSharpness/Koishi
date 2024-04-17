@@ -19,7 +19,7 @@ struct memorySimplifier {
     void analyzeStore(store_stmt *);
     definition *analyzeCall(call_stmt *);
     definition *analyzeLoad(load_stmt *);
-    void clearMemoryInfo();
+    void reset();
 };
 
 

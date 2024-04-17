@@ -12,21 +12,25 @@ struct GlobalValueNumberPass final : IRbase {
   public:
     GlobalValueNumberPass(function *);
   private:
-    using _Emap_t = std::unordered_map <expression, int , custom_hash>;
-    using _Mset_t = std::unordered_set <store_stmt *>;
+    using _Emap_t = std::unordered_map <expression, int, custom_hash>;
+    using _Dmap_t = std::unordered_map <definition *, number_t>;
     using _Bset_t = std::unordered_set <block *>;
     using _Evec_t = std::vector <expression>;
 
     /* The expression reverse-mapping. */
     _Evec_t data;
     /* The number of value assigned to each expression. */
-    _Emap_t numberMap;
+    /* This is used to implement common subexpression elimination. */
+    _Emap_t numMap;
+    /* The number of value assigned to each definition. */
+    /* This is used to give a unique number to each definition. */
+    _Dmap_t defMap;
     /* Block visit set. */
     _Bset_t visited;
-    /* Set of dead stores. */
-    _Mset_t deadStore;
     /* The memory simplifier. */
     memorySimplifier memManager;
+
+    int unknown_count = 0;
 
     number_t getNumber(definition *);
 

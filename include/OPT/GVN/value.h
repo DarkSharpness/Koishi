@@ -53,7 +53,9 @@ struct expression {
     number_t lval;  // Left value.
     number_t rval;  // Right value.
   public:
-    explicit expression() = default;
+    explicit expression(int unknown_id)
+        : type(type_t::UNKNOWN), operand(unknown_id), lval(), rval() {}
+
     expression(type_t __tp, int __op, number_t __l, number_t __r)
         : type(__tp), operand(__op), lval(__l), rval(__r) {}
 
@@ -61,7 +63,8 @@ struct expression {
 
     number_t get_l() const { return lval; }
     number_t get_r() const { return rval; }
-    int get_op() const { return operand; }
+    int get_op()      const { return operand; }
+    type_t get_type() const { return type; }
 
     /* An almost unique hash implementation. */
     std::size_t hash() const {

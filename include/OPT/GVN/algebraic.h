@@ -5,12 +5,11 @@
 
 namespace dark::IR::__gvn {
 
-struct algebraicSimplifier : matcher {
+struct algebraicSimplifier : private matcher {
   public:
-    algebraicSimplifier(std::span <expression> __data)
-        : matcher(__data) {}
+    algebraicSimplifier(std::span <expression> __data) : matcher(__data) {}
     void visit(int, number_t, number_t);
-    std::variant <expression, number_t> result;
+    std::variant <number_t, expression> result;
   private:
 
     void set_result(expression __e)  { result = __e; }
@@ -19,7 +18,7 @@ struct algebraicSimplifier : matcher {
         return set_result(expression {type_t::BINARY, __op, __x, __y});
     }
 
-    bool is_negative(number_t __n, number_t &__x);
+    bool is_negative(number_t __n, number_t &__x) const;
 
     void visitADD(number_t, number_t);  // +
     void visitSUB(number_t, number_t);  // -

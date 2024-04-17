@@ -24,7 +24,7 @@ auto f_times(int base) { return [base](int __n) -> bool { return __n % base == 0
 auto f_shift(int base) { return [base](int __n) -> bool { return (1 << __n) == base; }; }
 
 /* Return whether a number is a negative binary expression. */
-bool algebraicSimplifier::is_negative(number_t __n, number_t &__x) {
+bool algebraicSimplifier::is_negative(number_t __n, number_t &__x) const {
     return __n.has_type(BINARY) && match(__n, m_negative(__x));
 }
 

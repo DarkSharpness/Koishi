@@ -30,6 +30,8 @@ GlobalValueNumberPass::GlobalValueNumberPass(function *__func) {
 
 /** @brief A rpo walk on the dominator tree. */
 void GlobalValueNumberPass::visitGVN(block *__block) {
+    memManager.reset();
+
     for (auto __stmt : __block->phi) visitPhi(__stmt);
     for (auto __stmt : __block->data) visit(__stmt);
     visit(__block->flow);
@@ -83,19 +85,41 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
     auto __algebra = algebraicSimplifier { this->data };
     __algebra.visit(ctx->op, getNumber(ctx->lval), getNumber(ctx->rval));
     auto __result = std::move(__algebra.result);
-
-    runtime_assert(false, "TODO");
+    if (auto *__number = std::get_if <number_t> (&__result)) {
+        /* Reduced to a existing number. */
+        defMap[ctx->dest] = *__number;
+    } else {
+        auto __expression = std::get <expression> (__result);
+        auto [__iter, __success] = numMap.try_emplace(__expression); 
+        if (__success) { // A new expression.
+            __iter->second = data.size();
+            data.push_back(__expression);
+        }
+        defMap[ctx->dest] = { __iter->second, type_t::BINARY };
+    }
 }
 
 void GlobalValueNumberPass::visitCompare(compare_stmt *ctx) {
     runtime_assert(false, "TODO");
 }
 
-number_t GlobalValueNumberPass::getNumber(definition *) {
-    runtime_assert(false, "TODO");
-    return number_t {};
+number_t GlobalValueNumberPass::getNumber(definition *__def) {
+    if (auto __integer = __def->as <integer_constant> ())
+        return __integer->value;
+    if (auto __boolean = __def->as <boolean_constant> ())
+        return __boolean->value;
+    auto [__iter, __success] = defMap.try_emplace(__def);
+    if (__success) {
+        __iter->second = { (int)data.size(), type_t::UNKNOWN };
+        data.emplace_back(++unknown_count);
+    }
+    return __iter->second;
 }
 
+/* Mapping from a value index to number. */
+// number_t GlobalValueNumberPass::getNumber(int __index) {
+//     return number_t { __index, data[__index].get_type() };
+// }
 
 /**
  * TODO: Spread the condition to the next block and 
@@ -128,7 +152,7 @@ void GlobalValueNumberPass::removeDead(function *__func) {
     auto &&__filter = std::views::filter([this](statement *__stmt) {
         auto __store = __stmt->as <store_stmt> ();
         if (!__store) return true;
-        return deadStore.count(__store) == 0;
+        return memManager.deadStore.count(__store) == 0;
     });
 
     for (auto __block : __func->rpo) {

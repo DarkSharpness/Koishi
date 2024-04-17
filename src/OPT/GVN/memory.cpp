@@ -107,7 +107,7 @@ static bool analyzeMember(non_literal *__lhs, non_literal *__rhs) {
  * @return The result of the function call.
  */
 definition *memorySimplifier::analyzeCall(call_stmt *__call) {
-    if (!__call->func->is_builtin) clearMemoryInfo();
+    if (!__call->func->is_builtin) this->reset();
     return __call->dest;
 }
 
@@ -152,6 +152,6 @@ void memorySimplifier::analyzeStore(store_stmt *__store) {
     }
 }
 
-void memorySimplifier::clearMemoryInfo() { memMap.clear(); }
+void memorySimplifier::reset() { memMap.clear(); }
 
 } // namespace dark::IR
