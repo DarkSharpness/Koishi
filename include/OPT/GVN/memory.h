@@ -2,11 +2,9 @@
 #include "IRbase.h"
 #include <unordered_set>
 
-namespace dark::IR {
+namespace dark::IR::__gvn {
 
 struct memorySimplifier {
-    static bool mayAliasing(definition *, definition *);
-  protected:
     struct memInfo {
         definition *val     {};
         store_stmt *last    {};
@@ -23,8 +21,6 @@ struct memorySimplifier {
     definition *analyzeLoad(load_stmt *);
     void clearMemoryInfo();
 };
-
-
 
 
 } // namespace dark::IR

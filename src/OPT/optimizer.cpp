@@ -9,7 +9,7 @@
 #include "DCE/dce.h"
 #include "DCE/adce.h"
 #include "CP/sccp.h"
-#include "VN/gvn.h"
+#include "GVN/gvn.h"
 #include "LOOP/detector.h"
 #include "CP/sckp.h"
 #include "CM/gcm.h"

@@ -1,8 +1,8 @@
-#include "VN/mem.h"
+#include "GVN/memory.h"
 #include "IRnode.h"
 #include <algorithm>
 
-namespace dark::IR {
+namespace dark::IR::__gvn {
 
 enum class addressType {
     GLOBAL,     // Global variable  (always unique)
@@ -18,7 +18,11 @@ enum class addressType {
 
 static std::unordered_map <non_literal *, addressType> addrMap {};
 
-static addressType __traceAddr(non_literal *__var) {
+static bool analyzeMember(non_literal *__lhs, non_literal *__rhs);
+static bool mayAliasing(definition *__l, definition *__r);
+static addressType traceAddress(non_literal *__var);
+
+static addressType traceAddress(non_literal *__var) {
     auto [__iter, __success] = addrMap.try_emplace(__var);
     auto &__ans = __iter->second;
     if (!__success) return __ans;
@@ -55,19 +59,12 @@ static addressType __traceAddr(non_literal *__var) {
     }
 }
 
-static bool __analyzeMember(non_literal *__lhs, non_literal *__rhs) {
-    auto *__lget = __lhs->as <temporary> ()->def->as <get_stmt> ();
-    auto *__rget = __rhs->as <temporary> ()->def->as <get_stmt> ();
-    if (__lget->member != __rget->member) return false;
-    return memorySimplifier::mayAliasing(__lget->addr, __rget->addr);
-}
-
 /**
  * @return A conservative analysis of whether
  * the two non-literal may be aliasing.
  * If there's no way to determine, return true.
  */
-bool memorySimplifier::mayAliasing(definition *__l, definition *__r) {
+static bool mayAliasing(definition *__l, definition *__r) {
     if (__l == __r) return true;
     auto __lhs = __l->as <non_literal> ();
     auto __rhs = __r->as <non_literal> ();
@@ -75,12 +72,12 @@ bool memorySimplifier::mayAliasing(definition *__l, definition *__r) {
     if (__lhs->type != __rhs->type) return false;
 
     using enum addressType;
-    auto __ltype = __traceAddr(__lhs);
-    auto __rtype = __traceAddr(__rhs);
+    auto __ltype = traceAddress(__lhs);
+    auto __rtype = traceAddress(__rhs);
     auto [__min, __max] = std::minmax(__ltype, __rtype);
     switch (__min) {
         case GLOBAL:    return false;   // Global can't be aliasing.
-        case GETMEMBER: return __min == __max ? __analyzeMember(__lhs, __rhs) : false;
+        case GETMEMBER: return __min == __max ? analyzeMember(__lhs, __rhs) : false;
         case PHI:       return true;    // Phi may be aliasing.
         case GETARRAY:  return __min == __max ? true : false;
         case LOCAL:     return false;   // Local can't be load/malloc/call return/argv.
@@ -90,6 +87,13 @@ bool memorySimplifier::mayAliasing(definition *__l, definition *__r) {
         case ARGV:      return true;    // Argvs may be equal.
         default: __builtin_unreachable();
     }
+}
+
+static bool analyzeMember(non_literal *__lhs, non_literal *__rhs) {
+    auto *__lget = __lhs->as <temporary> ()->def->as <get_stmt> ();
+    auto *__rget = __rhs->as <temporary> ()->def->as <get_stmt> ();
+    if (__lget->member != __rget->member) return false;
+    return mayAliasing(__lget->addr, __rget->addr);
 }
 
 /**
@@ -149,6 +153,5 @@ void memorySimplifier::analyzeStore(store_stmt *__store) {
 }
 
 void memorySimplifier::clearMemoryInfo() { memMap.clear(); }
-
 
 } // namespace dark::IR
