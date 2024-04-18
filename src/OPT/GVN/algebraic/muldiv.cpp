@@ -65,8 +65,8 @@ void algebraicSimplifier::visitMUL(number_t __lval, number_t __rval) {
     /* (-x) * (-y) = x * y */
     if (is_negative(__lval, x) && is_negative(__rval, y))
         return visitMUL(x, y);
-    else
-        return set_result(MUL, __lval, __rval);
+
+    return set_result(MUL, __lval, __rval);
 }
 
 /* Magic number. */
@@ -126,6 +126,8 @@ void algebraicSimplifier::visitDIV(number_t __lval, number_t __rval) {
 
     /* (0 - x) / (0 - y) = x / y */
     if (__lneg && __rneg) return visitDIV(x, y);
+
+    return set_result(DIV, __lval, __rval);
 }
 
 void algebraicSimplifier::visitMOD(number_t __lval, number_t __rval) {
