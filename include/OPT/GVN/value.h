@@ -16,6 +16,7 @@ enum class type_t {
     BINARY,     // binary
     COMPARE,    // compare
     GETADDR,    // addr + offset
+    CONSTANT,   // constant
 };
 
 struct expression;
@@ -35,13 +36,14 @@ struct number_t {
     using _Ref_t = const expression &;
     _Ptr_t  expr = {};
     type_t  type = {};
+    int     data = {};
   public:
     explicit number_t() = default;
 
     number_t(int __const_value)
-        : expr(nullptr), type(static_cast <type_t> (__const_value)) {}
+        : expr(nullptr), type(type_t::CONSTANT), data(__const_value) {}
 
-    explicit number_t(_Ptr_t __e, type_t __tp) : expr(__e), type(__tp) {}
+    explicit number_t(_Ptr_t __e);
 
     /* For hash use only. Do not abuse it. */
     explicit operator std::size_t() const
@@ -49,10 +51,10 @@ struct number_t {
 
     bool is_const()             const { return expr == nullptr; }
     bool is_const(int __val)    const { return is_const() && get_const() == __val; }
-    bool has_type(type_t __tp)   const { return type == __tp; }
+    bool has_type(type_t __tp)  const { return type == __tp; }
 
     /* This function is safe to call even in wrong case. */
-    int get_const() const { return static_cast <int> (type); }
+    int get_const() const { return data; }
     /* This function is not safe to call in wrong case. */
     _Ref_t get_expression() const { return *expr; }
 
@@ -76,12 +78,10 @@ struct expression {
     explicit expression(type_t __tp, int __op, number_t __l, number_t __r)
         : type(__tp), operand(__op), lval(__l), rval(__r) {}
 
-    friend bool operator == (expression, expression) = default;
-
-    number_t get_l() const { return lval; }
-    number_t get_r() const { return rval; }
-    int get_op()      const { return operand; }
-    type_t get_type() const { return type; }
+    number_t get_l()    const { return lval; }
+    number_t get_r()    const { return rval; }
+    int      get_op()   const { return operand; }
+    type_t get_type()   const { return type; }
 
     /* An almost unique hash implementation. */
     std::size_t hash() const {
@@ -91,7 +91,11 @@ struct expression {
         |   static_cast <std::size_t> (lval)    << 8
         |   static_cast <std::size_t> (rval)    << 32;
     }
+
+    friend bool operator == (expression, expression) = default;
 };
+
+inline number_t::number_t(_Ptr_t __e) : expr(__e), type(__e->get_type()), data() {}
 
 /* Simple hash wrapper. */
 struct custom_hash {

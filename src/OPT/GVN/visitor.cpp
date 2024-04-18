@@ -40,7 +40,7 @@ number_t GlobalValueNumberPass::getNumber(definition *__def) {
     auto [__iter, __success] = defMap.try_emplace(__def);
     if (__success) {
         auto __expression = &unknown.emplace_back(unknown.size());
-        __iter->second = number_t { __expression, type_t::UNKNOWN };
+        __iter->second = number_t { __expression };
         cseMap[*__expression].insert(__def);
     }
     return __iter->second;
@@ -53,8 +53,15 @@ definition *GlobalValueNumberPass::pickBest(definition *__def) {
     return pickBest(__iter->second, __def->get_value_type());
 }
 
+/* Insert an expression-definition pair. */
+void GlobalValueNumberPass::insertCSE(expression __e, temporary *__dest) {
+    const auto __iter       = cseMap.try_emplace(__e).first;
+    auto &[__expr, __equal] = *__iter; // [ Expression ; EqualSet ]
+    __equal.insert(__dest);
+    defMap[__dest] = number_t { &__expr };
+}
+
 void GlobalValueNumberPass::visitPhi(phi_stmt *__phi) {
-    runtime_assert(false, "TODO");
     // temporary  *__def = __phi->dest;
     // definition *__tmp = nullptr;
     // bool    __failure = false; 
@@ -74,13 +81,15 @@ void GlobalValueNumberPass::visitPhi(phi_stmt *__phi) {
 }
 
 void GlobalValueNumberPass::visitCall(call_stmt *ctx) {
+    /* Update the content. */
     for (auto &__arg : ctx->args) __arg = pickBest(__arg);
     memManager.analyzeCall(ctx);
-
     // If pure, we may still number the result.
 }
 
+
 void GlobalValueNumberPass::visitLoad(load_stmt *ctx) {
+    /* Update the content. */
     ctx->addr = pickBest(ctx->addr);
     auto *__loaded = memManager.analyzeLoad(ctx);
     if (ctx->dest != __loaded)
@@ -88,15 +97,22 @@ void GlobalValueNumberPass::visitLoad(load_stmt *ctx) {
 }
 
 void GlobalValueNumberPass::visitStore(store_stmt *ctx) {
+    /* Update the content. */
     ctx->addr = pickBest(ctx->addr);
-    ctx->src_ = safe_cast <non_literal *> (pickBest(ctx->src_));
+    ctx->src_ = pickBest(ctx->src_);
     return (void)memManager.analyzeStore(ctx);
 }
 
 void GlobalValueNumberPass::visitGet(get_stmt *__get) {
-    runtime_assert(false, "TODO");
-    // auto [__iter, __success] = exprMap.try_emplace(__get, __get->dest);
-    // return updateValue(__get->dest, defMap[__get->dest] = __iter->second);
+    const auto __expression = expression {
+        type_t::GETADDR, static_cast <int> (__get->member),
+        getNumber(__get->addr), getNumber(__get->index),
+    };
+
+    insertCSE(__expression, __get->dest);
+    /* Update the content. */
+    __get->addr  = pickBest(__get->addr);
+    __get->index = pickBest(__get->index);
 }
 
 void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
@@ -110,13 +126,8 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
     } else { /* Equal to an expression. */
         const auto __expression = std::get <expression> (__result);
         const auto __iter       = cseMap.try_emplace(__expression).first;
-        auto &[__expr, __equal] = *__iter; // [ Expression ; EqualSet ]
 
-        /* Update the equal set. */
-        __equal.insert(ctx->dest);
-
-        /* Update the defMap. */
-        defMap[ctx->dest] = number_t { &__expr, type_t::BINARY };
+        insertCSE(__expression, ctx->dest);
 
         /* Update the context. */
         using _Op_t = binary_stmt::binary_op;

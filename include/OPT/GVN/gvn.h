@@ -49,10 +49,12 @@ struct GlobalValueNumberPass final : IRbase {
      */
     memorySimplifier memManager;
 
-    definition *pickBest(definition *);
-    definition *pickBest(number_t, typeinfo);
+    [[nodiscard]]definition *pickBest(definition *);
+    [[nodiscard]]definition *pickBest(number_t, typeinfo);
 
     number_t getNumber(definition *);
+
+    void insertCSE(expression, temporary *);
 
     void visitGVN(block *);
     void removeHash(block *);

@@ -38,9 +38,8 @@ void GlobalValueNumberPass::visitGVN(block *__block) {
 
 void GlobalValueNumberPass::removeHash(block *__block) {
     auto &&__modify = [this](statement *__stmt) {
-        auto __binary = __stmt->as <binary_stmt> ();
-        if (!__binary) return;
-        auto  __dst = __binary->dest;
+        auto __dst = __stmt->get_def();
+        if (!__dst) return;
         auto &__ref = this->defMap[__dst];
         if (__ref.is_const()) return;
         this->cseMap[__ref.get_expression()].remove(__dst);
