@@ -11,9 +11,9 @@ void algebraicSimplifier::visitADD(number_t __lval, number_t __rval) {
     number_t y {};
     int      c {};
 
-    if (int d = __rval.get_const(); __rval.is_const()) {
+    if (const int d = __rval.get_const(); __rval.is_const()) {
         /* c + d = (c + d) */
-        if (int c = __lval.get_const(); __lval.is_const()) return set_result(c + d);
+        if (const int c = __lval.get_const(); __lval.is_const()) return set_result(c + d);
 
         /* x + 0 = x */
         if (d == 0) return set_result(__lval);
@@ -72,7 +72,7 @@ void algebraicSimplifier::visitSUB(number_t __lval, number_t __rval) {
     number_t y {};
     int      c {};
 
-    if (auto x = __lval; __rval.has_type(BINARY)) {
+    if (const auto x = __lval; __rval.has_type(BINARY)) {
         /* x - (-y) = x + y */
         match_return(__rval, m_negative(y), visitADD(x, y));
 

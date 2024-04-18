@@ -33,7 +33,7 @@ void algebraicSimplifier::visitMUL(number_t __lval, number_t __rval) {
     number_t x {};
     int      c {};
 
-    if (int d = __rval.get_const(); __rval.is_const()) {
+    if (const int d = __rval.get_const(); __rval.is_const()) {
         /* x * 0 = 0 */
         if (d == 0) return set_result(0);
         /* x * 1 = x */
@@ -41,8 +41,7 @@ void algebraicSimplifier::visitMUL(number_t __lval, number_t __rval) {
         /* x * -1 = -x */
         if (d == -1) return visitNEG(__lval);
         /* c * d = (c * d) */
-        if (int c = __lval.get_const(); __lval.is_const())
-            return set_result(c * d);
+        if (const int c = __lval.get_const(); __lval.is_const()) return set_result(c * d);
 
         /* Can not simplify. */
         if (!__lval.has_type(BINARY)) return set_result(MUL, __lval, __rval);
@@ -80,7 +79,7 @@ void algebraicSimplifier::visitDIV(number_t __lval, number_t __rval) {
     number_t x {};
     int      c {};
 
-    if (int d = __rval.get_const(); __rval.is_const()) {
+    if (const int d = __rval.get_const(); __rval.is_const()) {
         /* x / 1 = x */
         if (d == 1)  return set_result(__lval);
         /* x / 0 = undefined */
@@ -88,8 +87,7 @@ void algebraicSimplifier::visitDIV(number_t __lval, number_t __rval) {
         /* x / -1 = -x */
         if (d == -1) return visitNEG(__lval);
         /* c / d = (c / d) */
-        if (int c = __lval.get_const(); __lval.is_const())
-            return set_result(c / d);
+        if (const int c = __lval.get_const(); __lval.is_const()) return set_result(c / d);
 
         /* Can not simplify. */
         if (!__lval.has_type(BINARY)) return set_result(DIV, __lval, __rval);
@@ -114,8 +112,8 @@ void algebraicSimplifier::visitDIV(number_t __lval, number_t __rval) {
 
     number_t y {};
 
-    auto __lneg = is_negative(__lval, x);
-    auto __rneg = is_negative(__rval, y);
+    const auto __lneg = is_negative(__lval, x);
+    const auto __rneg = is_negative(__rval, y);
 
     /* (0 - x) / x = -1 */
     if (__lneg && x == y) return set_result(-1);
@@ -137,14 +135,13 @@ void algebraicSimplifier::visitMOD(number_t __lval, number_t __rval) {
     number_t x {};
     int      c {};
 
-    if (int d = __rval.get_const(); __rval.is_const()) {
+    if (const int d = __rval.get_const(); __rval.is_const()) {
         /* x % 0 = undefined */
         if (d == 0) return set_result(UB_default);
         /* x % 1 = 0 */
         if (d == 1 || d == -1) return set_result(0);
         /* c % d = (c % d) */
-        if (int c = __lval.get_const(); __lval.is_const())
-            return set_result(c % d);
+        if (const int c = __lval.get_const(); __lval.is_const()) return set_result(c % d);
 
         /* Can not simplify. */
         if (!__lval.has_type(BINARY)) return set_result(MOD, __lval, __rval);
