@@ -1,6 +1,14 @@
 #pragma once
 #include "utility.h"
-namespace dark::IR { struct integer_constant; }
+
+/* Definitions used. */
+namespace dark::IR {
+
+struct integer_constant;
+struct definition;    
+
+} // namespace dark::IR
+
 namespace dark::IR::__gvn {
 
 enum class type_t {
@@ -8,8 +16,9 @@ enum class type_t {
     BINARY,     // binary
     COMPARE,    // compare
     GETADDR,    // addr + offset
-    CONSTANT,   // constant
 };
+
+struct expression;
 
 /**
  * The number assigned to an expression.
@@ -22,22 +31,30 @@ enum class type_t {
  */
 struct number_t {
   private:
-    int    data = {};
-    type_t type = {};
+    using _Ptr_t = const expression *;
+    using _Ref_t = const expression &;
+    _Ptr_t  expr = {};
+    type_t  type = {};
   public:
     explicit number_t() = default;
-    explicit operator std::size_t() const { return data; }
 
-    number_t(int __data, type_t __tp = type_t::CONSTANT) : data(__data), type(__tp) {}
+    number_t(int __const_value)
+        : expr(nullptr), type(static_cast <type_t> (__const_value)) {}
 
-    bool is_const()             const { return type == type_t::CONSTANT; }
-    bool is_const(int __val)    const { return is_const() && data == __val; }
+    explicit number_t(_Ptr_t __e, type_t __tp) : expr(__e), type(__tp) {}
+
+    /* For hash use only. Do not abuse it. */
+    explicit operator std::size_t() const
+    { return std::hash <const void *> {} (expr) + static_cast <std::size_t> (type); }
+
+    bool is_const()             const { return expr == nullptr; }
+    bool is_const(int __val)    const { return is_const() && get_const() == __val; }
     bool has_type(type_t __tp)   const { return type == __tp; }
 
     /* This function is safe to call even in wrong case. */
-    int get_const() const { return data; }
-    /* This function is safe to call even in wrong case. */
-    int get_index() const { return data; }
+    int get_const() const { return static_cast <int> (type); }
+    /* This function is not safe to call in wrong case. */
+    _Ref_t get_expression() const { return *expr; }
 
     friend bool operator == (number_t, number_t) = default;
 };
@@ -53,10 +70,10 @@ struct expression {
     number_t lval;  // Left value.
     number_t rval;  // Right value.
   public:
-    explicit expression(int unknown_id)
-        : type(type_t::UNKNOWN), operand(unknown_id), lval(), rval() {}
+    explicit expression(int __unknown_id)
+        : type(type_t::UNKNOWN), operand(__unknown_id), lval(), rval() {}
 
-    expression(type_t __tp, int __op, number_t __l, number_t __r)
+    explicit expression(type_t __tp, int __op, number_t __l, number_t __r)
         : type(__tp), operand(__op), lval(__l), rval(__r) {}
 
     friend bool operator == (expression, expression) = default;
@@ -79,6 +96,23 @@ struct expression {
 /* Simple hash wrapper. */
 struct custom_hash {
     std::size_t operator()(expression __e) const { return __e.hash(); }
+};
+
+/* A set of equal elements. */
+struct equal_set {
+    definition *best = nullptr;
+
+    /* Insert a definition pointer to the equal-set. */
+    void insert(definition *);
+    /**
+     * Remove a definition pointer from the equal-set. 
+     * @note This operation will move the pointer to
+     * a cache pool, which just means that this pointer
+     * has gone out of its live range.
+    */
+    void remove(definition *);
+    /* Return the best element in the equal-set. */
+    definition *top();
 };
 
 

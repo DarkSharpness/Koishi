@@ -28,7 +28,8 @@ static inline auto m_negative(number_t &__arg) {
 static inline void try_formatize(number_t &__lval, number_t &__rval) {
     if (__lval.is_const()) return std::swap(__lval, __rval);
     if (__rval.is_const()) return void(); // Do nothing.
-    if (__lval.get_index() > __rval.get_index()) return std::swap(__lval, __rval);
+    if (std::size_t(__lval) > std::size_t(__rval))
+        return std::swap(__lval, __rval); // Swap larger hash to right.
 }
 
 #define match_return(__arg0, __arg1, __arg2) \

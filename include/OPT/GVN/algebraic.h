@@ -7,7 +7,7 @@ namespace dark::IR::__gvn {
 
 struct algebraicSimplifier : private matcher {
   public:
-    algebraicSimplifier(std::span <expression> __data) : matcher(__data) {}
+    algebraicSimplifier() = default;
     void visit(int, number_t, number_t);
     std::variant <number_t, expression> result;
   private:

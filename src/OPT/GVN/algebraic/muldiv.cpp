@@ -14,7 +14,7 @@ struct m_const_if {
     _Func func;
   public:
     m_const_if(int &__v, _Func &&__f) : value(&__v), func(std::move(__f)) {}
-    bool match(number_t __n, const void *) const {
+    bool match(number_t __n) const {
         return __n.is_const() && func(*value = __n.get_const());
     }
 };
