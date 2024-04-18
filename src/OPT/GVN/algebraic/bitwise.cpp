@@ -63,6 +63,8 @@ void algebraicSimplifier::visitSHR(number_t __lval, number_t __rval) {
 
     /* (x >> c) >> d = x >> (c + d) */
     match_return(__lval, m <SHR> (m_value_as(x), m_const_as(c)), visitSHR(x, c + d));
+
+    return set_result(SHR, __lval, __rval);
 }
 
 void algebraicSimplifier::visitAND(number_t __lval, number_t __rval) {

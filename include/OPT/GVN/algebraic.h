@@ -9,7 +9,7 @@ struct algebraicSimplifier : private matcher {
   public:
     algebraicSimplifier() = default;
     void visit(int, number_t, number_t);
-    std::variant <number_t, expression> result;
+    std::variant <std::monostate, number_t, expression> result;
   private:
 
     void set_result(expression __e)  { result = __e; }
