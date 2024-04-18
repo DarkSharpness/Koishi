@@ -18,9 +18,9 @@ enum class addressType {
 
 static std::unordered_map <non_literal *, addressType> addrMap {};
 
-static bool analyzeMember(non_literal *__lhs, non_literal *__rhs);
-static bool mayAliasing(definition *__l, definition *__r);
-static addressType traceAddress(non_literal *__var);
+static addressType traceAddress(non_literal *);
+static bool analyzeMember(non_literal *, non_literal *);
+static bool mayAliasing(definition *, definition *);
 
 static addressType traceAddress(non_literal *__var) {
     auto [__iter, __success] = addrMap.try_emplace(__var);
@@ -59,6 +59,13 @@ static addressType traceAddress(non_literal *__var) {
     }
 }
 
+static bool analyzeMember(non_literal *__lhs, non_literal *__rhs) {
+    auto *__lget = __lhs->as <temporary> ()->def->as <get_stmt> ();
+    auto *__rget = __rhs->as <temporary> ()->def->as <get_stmt> ();
+    if (__lget->member != __rget->member) return false;
+    return mayAliasing(__lget->addr, __rget->addr);
+}
+
 /**
  * @return A conservative analysis of whether
  * the two non-literal may be aliasing.
@@ -89,13 +96,6 @@ static bool mayAliasing(definition *__l, definition *__r) {
     }
 }
 
-static bool analyzeMember(non_literal *__lhs, non_literal *__rhs) {
-    auto *__lget = __lhs->as <temporary> ()->def->as <get_stmt> ();
-    auto *__rget = __rhs->as <temporary> ()->def->as <get_stmt> ();
-    if (__lget->member != __rget->member) return false;
-    return mayAliasing(__lget->addr, __rget->addr);
-}
-
 /**
  * @brief Analyze the influence of a function call.
  * If builtin, no extra load/store will be done.
@@ -118,10 +118,10 @@ definition *memorySimplifier::analyzeCall(call_stmt *__call) {
 definition *memorySimplifier::analyzeLoad(load_stmt *__load) {
     auto *__addr = __load->addr;
     auto *__dest = __load->dest;
-    definition *__ret = __dest;
-
     auto &__info = memMap[__addr];
-    if (__info.val) __ret       = __info.val;
+
+    definition *__loaded = __dest;
+    if (__info.val) __loaded    = __info.val;
     else            __info.val  = __dest;
 
     /* Update the influence. */
@@ -130,28 +130,33 @@ definition *memorySimplifier::analyzeLoad(load_stmt *__load) {
         if (mayAliasing(__addr, __def)) __mem.last = {}; // Last store may be used.
     }
 
-    return __ret;   // Return the loaded value.
+    return __loaded;    // Return the loaded value.
 }
 
 void memorySimplifier::analyzeStore(store_stmt *__store) {
-    auto *__src  = __store->src_;
-    auto *__addr = __store->addr;
-
-    auto &__info = memMap[__addr];
+    auto *__addr  = __store->addr;
+    auto &__info  = memMap[__addr];
+    auto *__value = __store->src_;
     if (auto __last = __info.last)  deadStore.insert(__last);   // Useless last store.
-    else if (__info.val == __src)   deadStore.insert(__store);  // Store loaded result.
+    else if (__info.val == __value) deadStore.insert(__store);  // Store loaded result.
 
     __info.last = __store;
-    __info.val  = __src;
+    __info.val  = __value;
 
     /* Update the influence. */
     for (auto &[__def , __mem] : memMap) {
         if (__addr == __def) continue;
-        if (__mem.val != __src && mayAliasing(__addr, __def))
-            __mem = {}; // Reset this as useless.
+        if (__mem.val != __value // If the same, we don't need to reset.
+         && mayAliasing(__addr, __def)) __mem = {}; // Reset this as useless.
     }
 }
 
+/**
+ * Reset the memory state.
+ * TODO: May be we may add a hint about which part
+ * of the memory should be reset, which may help to
+ * leave behind more oppurtunities to optimize.
+ */
 void memorySimplifier::reset() { memMap.clear(); }
 
 } // namespace dark::IR

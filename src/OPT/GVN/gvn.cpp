@@ -64,14 +64,24 @@ void GlobalValueNumberPass::visitPhi(phi_stmt *__phi) {
 }
 
 void GlobalValueNumberPass::visitCall(call_stmt *ctx) {
-    return (void)memManager.analyzeCall(ctx);
+    for (auto &__arg : ctx->args) __arg = pickBest(__arg);
+    memManager.analyzeCall(ctx);
+
+    // If pure, we may still number the result.
+
+
 }
 
 void GlobalValueNumberPass::visitLoad(load_stmt *ctx) {
-    return (void)memManager.analyzeLoad(ctx);
+    ctx->addr = pickBest(ctx->addr);
+    auto *__loaded = memManager.analyzeLoad(ctx);
+    if (ctx->dest != __loaded)
+        return updateValue(ctx->dest, __loaded);
 }
 
 void GlobalValueNumberPass::visitStore(store_stmt *ctx) {
+    ctx->addr = pickBest(ctx->addr);
+    ctx->src_ = safe_cast <non_literal *> (pickBest(ctx->src_));
     return (void)memManager.analyzeStore(ctx);
 }
 
@@ -96,11 +106,18 @@ void GlobalValueNumberPass::visitBinary(binary_stmt *ctx) {
             data.push_back(__expression);
         }
         defMap[ctx->dest] = { __iter->second, type_t::BINARY };
+
+        /* Update the context. */
+        using _Bop_t = binary_stmt::binary_op;
+        ctx->op     = static_cast <_Bop_t> (__expression.get_op());
+        ctx->lval   = pickBest(__expression.get_l());
+        ctx->rval   = pickBest(__expression.get_r());
     }
 }
 
 void GlobalValueNumberPass::visitCompare(compare_stmt *ctx) {
-    runtime_assert(false, "TODO");
+    ctx->lval = pickBest(ctx->lval);
+    ctx->rval = pickBest(ctx->rval);
 }
 
 number_t GlobalValueNumberPass::getNumber(definition *__def) {
@@ -116,11 +133,6 @@ number_t GlobalValueNumberPass::getNumber(definition *__def) {
     return __iter->second;
 }
 
-/* Mapping from a value index to number. */
-// number_t GlobalValueNumberPass::getNumber(int __index) {
-//     return number_t { __index, data[__index].get_type() };
-// }
-
 /**
  * TODO: Spread the condition to the next block and 
  * its domSet.
@@ -128,16 +140,22 @@ number_t GlobalValueNumberPass::getNumber(definition *__def) {
  * like %x != 0, %y < 0.
  * This can be used to optimize the condition branch. 
  */
-void GlobalValueNumberPass::visitBranch(branch_stmt *) {}
+void GlobalValueNumberPass::visitBranch(branch_stmt *ctx) {
+    ctx->cond = pickBest(ctx->cond); 
+}
+
+void GlobalValueNumberPass::visitReturn(return_stmt *ctx) {
+    if (ctx->retval) ctx->retval = pickBest(ctx->retval);
+}
+
 void GlobalValueNumberPass::visitJump(jump_stmt *) {}
 void GlobalValueNumberPass::visitUnreachable(unreachable_stmt *) {}
-void GlobalValueNumberPass::visitReturn(return_stmt *) {}
 
-} // namespace dark::IR
+} // namespace dark::IR::__gvn
 
 
 /* Some other part. */
-namespace dark::IR {
+namespace dark::IR::__gvn {
 
 void GlobalValueNumberPass::removeHash(block *__block) {
     runtime_assert(false, "TODO");
@@ -145,9 +163,11 @@ void GlobalValueNumberPass::removeHash(block *__block) {
 
 /* Update all use with the latest value. */
 void GlobalValueNumberPass::updateValue(temporary *__old, definition *__new) {
-    runtime_assert(false, "TODO");
+    defMap[__old] = getNumber(__new);
+    // runtime_assert(false, "TODO");
 }
 
+/* Remove all dead stores. */
 void GlobalValueNumberPass::removeDead(function *__func) {
     auto &&__filter = std::views::filter([this](statement *__stmt) {
         auto __store = __stmt->as <store_stmt> ();

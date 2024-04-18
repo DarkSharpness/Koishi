@@ -17,18 +17,33 @@ struct GlobalValueNumberPass final : IRbase {
     using _Bset_t = std::unordered_set <block *>;
     using _Evec_t = std::vector <expression>;
 
-    /* The expression reverse-mapping. */
+    /**
+     * The expression of given index.
+     * This pool is non-decreasing, which will only be appended.
+    */
     _Evec_t data;
-    /* The number of value assigned to each expression. */
-    /* This is used to implement common subexpression elimination. */
+    /**
+     * The index of each expression.
+     * For each index, we maintian a set of definitions
+     * that equals to the expression in value.
+     * 
+     * This map is used for hash-based CSE.
+     * We may pick the best definition from the equal set.
+    */
     _Emap_t numMap;
-    /* The number of value assigned to each definition. */
-    /* This is used to give a unique number to each definition. */
+    /**
+     * The unique number of each definition.
+     * Number = Index + Type.
+     * Number is the unique identifier for each definition.
+    */
     _Dmap_t defMap;
     /* Block visit set. */
     _Bset_t visited;
     /* The memory simplifier. */
     memorySimplifier memManager;
+
+    definition *pickBest(definition *);
+    definition *pickBest(number_t);
 
     int unknown_count = 0;
 
