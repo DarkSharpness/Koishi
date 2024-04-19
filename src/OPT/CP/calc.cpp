@@ -88,11 +88,11 @@ void ConstantCalculator::visitBinary(binary_stmt *ctx) {
             case ctx->MUL: case ctx->AND:
             case ctx->SHL: case ctx->SHR:
                 return setResult(__lval);
-            case ctx->ADD: case ctx->SUB:
+            case ctx->ADD:
             case ctx->XOR: case ctx->OR: 
                 return setResult(__rval);
         }
-        __unreachable_assert();
+        // Only case left: 0 - x
     } else if (__lval == IRpool::__pos1__) { // 1 * x
         switch (ctx->op) case ctx->MUL: return setResult(__rval);
     } else if (__lval == IRpool::__neg1__) {
