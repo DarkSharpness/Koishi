@@ -7,6 +7,9 @@
 
 namespace dark::IR {
 
+/* The tuple holding return value. */
+using _Tuple_t = std::variant <sizeInfo, bitsInfo, knowledge>;
+
 static sizeInfo __merge(sizeInfo __lhs, sizeInfo __rhs) {
     return sizeInfo {
         std::min(__lhs.lower, __rhs.lower),
@@ -69,7 +72,8 @@ static auto updateDiv(binary_stmt *ctx, sizeInfo __lhs, sizeInfo __rhs)
 static auto updateMod(binary_stmt *ctx, sizeInfo __lhs, sizeInfo __rhs)
     -> sizeInfo {
     if (__lhs.lower == __lhs.upper && __rhs.lower == __rhs.upper) {
-        if (!__rhs.lower) __rhs.lower = 1;
+        // If both are constants, calculate the result.
+        if (!__rhs.lower) return sizeInfo { 0 };
         return sizeInfo { __lhs.lower % __rhs.lower };
     }
 
@@ -78,29 +82,61 @@ static auto updateMod(binary_stmt *ctx, sizeInfo __lhs, sizeInfo __rhs)
     return sizeInfo { -__bound, __bound};
 }
 
-static auto updateShl(binary_stmt *ctx, bitsInfo __lhs, sizeInfo __rhs)
-    -> bitsInfo {
+static auto updateShl(binary_stmt *ctx, knowledge __lhs, sizeInfo __rhs)
+    -> _Tuple_t {
     auto [__l, __r] = __rhs;
-    if (__l >= 32) return bitsInfo {0};
-    if (__r <= 0 ) return __lhs;
-    if (__l == __r) {
-        __lhs.state <<= __l;
-        __lhs.valid <<= __l;
-        __lhs.valid |= (1u << __l) - 1; // Low bits are 0.
-        return __lhs;
-    } else return bitsInfo {}; // Too hard to trace.
+    if (__l >= 32) return bitsInfo {0}; // Sure to be 0.
+    if (__r <= 0 ) return __lhs;        // No change.
+    auto [__size, __bits] = __lhs;
+
+    __bits.state <<= __r;
+    if (__l == __r) { // __rhs is a constant.
+        /* l in [1, 31] */
+        __bits.valid <<= __r;
+        __bits.valid |= (1u << __r) - 1;
+        /* __lhs is a constant case. */
+        if (~__bits.valid == 0) return __bits;
+    } else {
+        /* Only low bits are bound to be 0. */
+        __l = __l < 0 ? 0 : __l;
+        __bits.valid = (1 << __l) - 1;
+    }
+
+    /* Shift out of bound case. */
+    if (__r >= 32
+    ||  __size.lower <= INT32_MIN >> __r
+    ||  __size.upper >= INT32_MAX >> __r) return __bits;
+
+    // return bitsInfo {};
+    /* Shift within bound case. */
+    else return knowledge {
+        sizeInfo {__size.lower << __r, __size.upper << __r}, __bits
+    };
 }
 
-static auto updateShr(binary_stmt *ctx, bitsInfo __lhs, sizeInfo __rhs)
-    -> bitsInfo {
+static auto updateShr(binary_stmt *ctx, knowledge __lhs, sizeInfo __rhs)
+    -> _Tuple_t {
     auto [__l, __r] = __rhs;
+
     __l = (__l < 0) ? 0 : (__l > 31) ? 31 : __l;
     __r = (__r < 0) ? 0 : (__r > 31) ? 31 : __r;
+
+    auto [__size, __bits] = __lhs;
     if (__l == __r) {
-        __lhs.state >>= __l; // Note that state is a signed type.
-        __lhs.valid >>= __l; // High bits are valid iff sign bit is valid.
-        return __lhs;
-    } else return bitsInfo {}; // Too hard to trace.
+        __bits.state >>= __l; // Note that state is a signed type.
+        __bits.valid >>= __l; // High bits are valid iff sign bit is valid.
+        /* __lhs is a constant case. */
+        if (~__bits.valid == 0) return __bits;
+    } else if (__bits.valid >> 31) {
+        __bits.valid = INT32_MIN >> __l; // Those higher bits are valid.
+    }
+
+    __size.lower >>= __l;
+    __size.upper >>= __l;
+
+    if (__size.lower == __size.upper) // Go to constant case.
+        return bitsInfo {__size.lower};
+    else return knowledge { __size , __bits };
 }
 
 static auto updateAnd(binary_stmt *ctx, bitsInfo __lhs, bitsInfo __rhs)
@@ -171,7 +207,7 @@ void KnowledgePropagatior::visitCompare(compare_stmt *ctx) {
 }
 
 void KnowledgePropagatior::visitBinary(binary_stmt *ctx) {
-    std::variant <sizeInfo, bitsInfo> __val;
+    _Tuple_t __val;
     switch (ctx->op) {
         case ctx->ADD: __val = updateAdd(
             ctx, traceSize(ctx->lval), traceSize(ctx->rval)); break;
@@ -184,9 +220,9 @@ void KnowledgePropagatior::visitBinary(binary_stmt *ctx) {
         case ctx->MOD: __val = updateMod(
             ctx, traceSize(ctx->lval), traceSize(ctx->rval)); break;
         case ctx->SHL: __val = updateShl(
-            ctx, traceBits(ctx->lval), traceSize(ctx->rval)); break;
+            ctx, traceBoth(ctx->lval), traceSize(ctx->rval)); break;
         case ctx->SHR: __val = updateShr(
-            ctx, traceBits(ctx->lval), traceSize(ctx->rval)); break;
+            ctx, traceBoth(ctx->lval), traceSize(ctx->rval)); break;
         case ctx->AND: __val = updateAnd(
             ctx, traceBits(ctx->lval), traceBits(ctx->rval)); break;
         case ctx->OR:  __val = updateOr(
@@ -196,8 +232,10 @@ void KnowledgePropagatior::visitBinary(binary_stmt *ctx) {
     }
     if (__val.index() == 0) {
         updateSize(ctx->dest, std::get <0> (__val));
-    } else {
+    } else if (__val.index() == 1) {
         updateBits(ctx->dest, std::get <1> (__val));
+    } else {
+        updateBoth(ctx->dest, std::get <2> (__val));
     }
 }
 
@@ -222,6 +260,21 @@ void KnowledgePropagatior::updateSize(temporary *__tmp, sizeInfo __size) {
         __def.init(__merge(__def.size, __size));
     } else {
         __def.init(__size);
+    }
+    __def.type++;
+    updated = true;
+}
+
+void KnowledgePropagatior::updateBoth(temporary *__tmp, knowledge __info) {
+    auto &__def = defMap[__tmp];
+    if (__def.type == __def.UNCERTAIN) return;
+    auto [__size, __bits] = __info;
+    if (__def.type != __def.UNDEFINED) {
+        if (__def.size <= __size && __def.bits <= __bits) return;
+        __def.size = __merge(__def.size, __size);
+        __def.bits = __merge(__def.bits, __bits);
+    } else {
+        static_cast <knowledge &> (__def) = __info;
     }
     __def.type++;
     updated = true;

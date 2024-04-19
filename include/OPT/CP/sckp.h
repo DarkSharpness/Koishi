@@ -52,6 +52,7 @@ struct KnowledgePropagatior : SparseConditionalPropagatior, IRbase {
     knowledge   traceBoth(definition *);
     void updateSize(temporary *, sizeInfo);
     void updateBits(temporary *, bitsInfo);
+    void updateBoth(temporary *, knowledge);
 
     void visitCompare(compare_stmt *) override;
     void visitBinary(binary_stmt *) override;
