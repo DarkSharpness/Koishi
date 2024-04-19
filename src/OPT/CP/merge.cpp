@@ -293,37 +293,57 @@ bool operator <= (sizeInfo __lhs, sizeInfo __rhs) {
 }
 
 bitsInfo KnowledgePropagatior::traceBits(definition *__def) {
-    if (auto *__val = __def->as <integer_constant> ()) {
-        return bitsInfo {__val->value};
-    } else if (auto *__tmp = __def->as <temporary> ()) {
-        auto &__info = defMap[__tmp];
-        return __info.type == defInfo::UNCERTAIN ? bitsInfo {} : __info.bits;
-    } else return bitsInfo {};
+    return traceBoth(__def).bits;
 }
 
 sizeInfo KnowledgePropagatior::traceSize(definition *__def) {
+    return traceBoth(__def).size;
+}
+
+knowledge KnowledgePropagatior::traceBoth(definition *__def) {
     if (auto *__val = __def->as <integer_constant> ()) {
-        return sizeInfo {__val->value};
+        return knowledge {sizeInfo {__val->value}, bitsInfo {__val->value}};
     } else if (auto *__tmp = __def->as <temporary> ()) {
         auto &__info = defMap[__tmp];
-        return __info.type == defInfo::UNCERTAIN ? sizeInfo {} : __info.size;
-    } else return sizeInfo {};
+        return __info.type == defInfo::UNCERTAIN ? knowledge {} : __info;
+    } else return knowledge {};
 }
 
 void knowledge::init(sizeInfo __size) {
     size = __size;
     if (size.lower == size.upper)
         bits = bitsInfo {size.lower};
-    else
-        bits = {};
+    else {
+        if (size.lower >= 0) {
+            // The highest bit in the upper.
+            const auto __top    = std::bit_floor<unsigned>(size.upper);
+            // Those higher-than-top bits are sure to be 0.
+            const int __valid   = ~((__top << 1) - 1);
+            // Higher bits are 0, while lower bits are unknown.
+            const int __state   = size.upper;
+            bits = bitsInfo {__state, __valid};
+        } else if (size.upper < 0) {
+            // The highest bit in the lower.
+            const auto __top    = std::bit_floor<unsigned>(~size.lower);
+            // Those higher-than-top bits are sure to be 1.
+            const int __valid   = ~((__top << 1) - 1);
+            // Higher bits are 1, while lower bits are unknown.
+            const int __state   = size.lower;
+            bits = bitsInfo {__state, __valid};
+        }
+    }
 }
 
 void knowledge::init(bitsInfo __bits) {
     bits = __bits;
     if (bits.valid == -1)
         size = sizeInfo {bits.state};
-    else
-        size = {};
+    else if (bits.valid >> 31) {
+        if (bits.state < 0) // Negative
+            size = sizeInfo {INT32_MIN, -1};
+        else // Positive
+            size = sizeInfo {0, INT32_MAX};
+    }
 }
 
 

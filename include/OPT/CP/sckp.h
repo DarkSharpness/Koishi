@@ -47,8 +47,9 @@ struct KnowledgePropagatior : SparseConditionalPropagatior, IRbase {
     bool checkProperty(function *);
     void setProperty(function *);
 
-    bitsInfo traceBits(definition *);
-    sizeInfo traceSize(definition *);
+    bitsInfo    traceBits(definition *);
+    sizeInfo    traceSize(definition *);
+    knowledge   traceBoth(definition *);
     void updateSize(temporary *, sizeInfo);
     void updateBits(temporary *, bitsInfo);
 
