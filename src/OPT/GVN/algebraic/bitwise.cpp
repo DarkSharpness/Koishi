@@ -85,7 +85,8 @@ void algebraicSimplifier::visitAND(number_t __lval, number_t __rval) {
         if (__lval.is_const()) return set_result(__lval.get_const() & d);
 
         /* (x & c) & d = x & (c & d) */
-        match_return(__lval, m <AND> (m_value_as(x), m_const_as(c)), visitAND(x, c & d));
+        if (__lval.has_type(BINARY))
+            match_return(__lval, m <AND> (m_value_as(x), m_const_as(c)), visitAND(x, c & d));
     
         return set_result(AND, __lval, __rval);
     }
@@ -127,6 +128,7 @@ void algebraicSimplifier::visitOR_(number_t __lval, number_t __rval) {
     if (__lval == __rval) return set_result(__lval);
 
     number_t x {};
+    int      c {};
     if (const int d = __rval.get_const(); __rval.is_const()) {
         /* x | 0 = x */
         if (d == 0)     return set_result(__lval);
@@ -136,9 +138,9 @@ void algebraicSimplifier::visitOR_(number_t __lval, number_t __rval) {
         /* c | d = (c | d) */
         if (__lval.is_const()) return set_result(__lval.get_const() | d);
 
-        int c {};
         /* (x | c) | d = x | (c | d) */
-        match_return(__lval, m <OR> (m_value_as(x), m_const_as(c)), visitOR_(x, c | d));
+        if (__lval.has_type(BINARY))
+            match_return(__lval, m <OR> (m_value_as(x), m_const_as(c)), visitOR_(x, c | d));
 
         return set_result(OR, __lval, __rval);
     }
@@ -182,7 +184,7 @@ void algebraicSimplifier::visitXOR(number_t __lval, number_t __rval) {
     if (__lval == __rval) return set_result(0);
 
     number_t x {};
-    int c {};
+    int      c {};
     if (const int d = __rval.get_const(); __rval.is_const()) {
         /* x ^ 0 = x */
         if (d == 0)     return set_result(__lval);
@@ -191,7 +193,8 @@ void algebraicSimplifier::visitXOR(number_t __lval, number_t __rval) {
         if (__lval.is_const()) return set_result(__lval.get_const() ^ d);
 
         /* (x ^ c) ^ d = x ^ (c ^ d) */
-        match_return(__lval, m <XOR> (m_value_as(x), m_const_as(c)), visitXOR(x, c ^ d));
+        if (__lval.has_type(BINARY))
+            match_return(__lval, m <XOR> (m_value_as(x), m_const_as(c)), visitXOR(x, c ^ d));
 
         return set_result(XOR, __lval, __rval);
     }
