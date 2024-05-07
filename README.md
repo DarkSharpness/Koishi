@@ -4,7 +4,7 @@ A compiler translating [Mx* language](https://github.com/ACMClassCourses/Compile
 
 - For general information about this project (e.g. how to run this project), please refer to [About](docs/about.md).
 - For implementation details or a nice (hope so) tutorial , refer to [Detail](docs/detail.md)
-- For information about me (?), please visit my [website](https://darksharpness.github.io)
+- For information about me (?), please visit my [website](https://darksharpness.github.io). Nevertheless, you may try [this](https://darksharpness.github.io/CompilerMx/).
 - For latest information, please continue reading.
 
 ## Latest update 2024-04-18

@@ -1,19 +1,31 @@
+# Some random thoughts
+
 I hope this could be helpful for those who want to write a compiler from scratch.
 
-# AST
+First of all, I will list all the references I may have used here. Hope to be useful for you.
 
-## Building
+- [GCM/GVN](https://dl.acm.org/doi/pdf/10.1145/207110.207154): Global Code Motion, Global Value Numbering
+- [SCCP](https://bears.ece.ucsb.edu/class/ece253/papers/wegman91.pdf): Sparse Conditional Constant Propagation
+- [ADCE](https://www.cnblogs.com/lixingyang/p/17728846.html): Aggressive dead code elimination.
+- [PRE](https://dl.acm.org/doi/pdf/10.1145/319301.319348): Partial redundancy elimination. (I did not implement this) (Another [blog](https://humane-krypton-453.notion.site/SSAPRE-afca1a39cadb46248a529aed371857e5))
+- [Magic](https://dl.acm.org/doi/pdf/10.1145/773473.178249): Division by Invariant Integers using Multiplication.
+- [SSA-RA](https://compilers.cs.uni-saarland.de/projects/ssara/): SSA-based Register Allocation. (I may write this later)
+- [Linear-RA](http://www.christianwimmer.at/Publications/Wimmer10a/Wimmer10a.pdf): Linear Scan Register Allocation on SSA Form. (I implement part of this in my last project)
+- [RA](https://zhuanlan.zhihu.com/p/674618277): Just a zhihu article about register allocation.
+
+## AST-level
+
+### Building
 
 Normal visitor mode pattern. With the help of antlr, I don't have to directly parse the input code. With the help of antlr, building the AST tree is too boring that I don't even want to detail it here.
 
 Suggestions for beginners: Just be a bit more careful is enough.
 
-## Checking
+### Checking
 
 Then, it's one of the core part: AST checking. It perform semantic check on the input AST-tree. Based on the nature of Mx, the process is roughly divided into 3 parts: Class-scanning, Function-scanning, Overall-scanning.
 
-
-### Class-scanning.
+#### Class-scanning
 
 In class-scanning, we first create and insert builtin classes to the class_map, which maintains a mapping from a name to class_type pointer. In Mx, there are 6 builtin-types.
 
@@ -30,7 +42,7 @@ Then, we insert the member functions to the scope of the class for builtin types
 
 After that, we check for all the types used in the Mx program. If there's a type which is used in program  (a.k.a: this type has appeared in the class_map, but when scanning all class definition, we don't find the corresponding class), we throw error. In the same stage, we also check whether there are 2 class definitions that declare the same class name.
 
-### Function-scanning
+#### Function-scanning
 
 Function-scanning is a bit more complicated than class-scanning.
 
@@ -62,7 +74,7 @@ For member functions, the procedures are similar. First, "check_void". Then, che
 
 As for member variables, we just need to check its conflict with other member variables/functions. Also, the initializer of it should be null (But, this can be supported in future as a feature).
 
-### Overall-scanning
+#### Overall-scanning
 
 Just like building an AST-tree, we visit the AST-tree, using visitor mode pattern.
 
@@ -94,10 +106,10 @@ After that, the type check goes easy: First visit down the expression. Then look
 
 Finally, we should do some corner checks. Whether the main function is a valid one ( int main() {...} ). Whether the "_Global_init" functions is used (if not, remove it; otherwise, call it at the beginning of main function).
 
-## Optimization
+### Optimization
 
 There isn't much to optimize in AST-level for me. The only AST-level optimization for me currently is constant folding. What does it means? Fold constant expressions, like `114 + 514 / 19 - 19 * 8 % 10`. I know that's not strong enough, but that's really easy to implement, and doesn't requires any data-flow analysis. I just write that by the way.
 
-# IR
+## IR-level
 
 TODO:
