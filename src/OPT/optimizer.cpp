@@ -11,7 +11,6 @@
 #include "CP/sccp.h"
 #include "GVN/gvn.h"
 #include "LOOP/detector.h"
-#include "CP/sckp.h"
 #include "CM/gcm.h"
 #include "EARLY/gcr.h"
 #include "CFGsimplifier.h"
@@ -42,7 +41,6 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::AggressiveElimination { &__func };
         IR::CFGsimplifier { &__func };
 
-        IR::KnowledgePropagatior { &__func };
         IR::unreachableRemover { &__func };
         IR::DeadCodeEliminator { &__func };
         IR::dominantMaker { &__func };
@@ -51,7 +49,6 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::AggressiveElimination { &__func };
         IR::CFGsimplifier { &__func };
 
-        IR::KnowledgePropagatior { &__func };
         IR::LoopNestDetector { &__func };
         IR::GlobalCodeMotionPass { &__func };
         IR::GlobalValueNumberPass { &__func };
@@ -59,8 +56,6 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::ConstantPropagatior { &__func };
         IR::unreachableRemover { &__func };
         IR::DeadCodeEliminator { &__func };
-
-        IR::KnowledgePropagatior { &__func , true };
     }
 }
 
