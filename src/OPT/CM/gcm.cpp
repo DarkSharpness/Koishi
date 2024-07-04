@@ -25,12 +25,12 @@ static block *__get_early(statement *__node) {
     return __node->get_ptr <block> ();
 }
 
-static std::size_t __get_loop_depth(block *__node) {
-    return __node->loop ? __node->loop->depth : 0;
-}
-
 static void __set_early(statement *__node, block *__block) {
     __node->set_ptr(__block);
+}
+
+static std::size_t __get_loop_depth(block *__node) {
+    return __node->loop ? __node->loop->depth : 0;
 }
 
 static block *__find_lca(block *__a, block *__b) {
@@ -65,22 +65,19 @@ GlobalCodeMotionPass::GlobalCodeMotionPass(function *__func) {
     setProperty(__func);
 }
 
+
 void GlobalCodeMotionPass::initBlock(block *__block) {
     const std::size_t __depth = __block->idom ?
         __get_depth(__block->idom) + 1 : 0;
     __set_depth(__block, __depth);
 
-    for (auto __stmt : __block->phi)
+    auto &&__early = [this, __block](statement *__stmt) {
         __set_early(__stmt, __block);
+    };
 
-    for (auto __stmt : __block->data)
-        if (__is_fixed(__stmt))
-            __set_early(__stmt, __block);
-        else
-            __set_early(__stmt, __entry);
-
-    __set_early(__block->flow, __block);
+    visitBlock(__block, __early);
 }
+
 
 void GlobalCodeMotionPass::scheduleEarly(statement *__node) {
     if (!visited.insert(__node).second) return;
@@ -97,6 +94,7 @@ void GlobalCodeMotionPass::scheduleEarly(statement *__node) {
     __set_early(__node, __block);
 }
 
+
 void GlobalCodeMotionPass::initUseList(block *__block) {
     auto &&__operation = [this, __block](statement *__stmt) -> void {
         for (auto __use : __stmt->get_use()) {
@@ -104,25 +102,26 @@ void GlobalCodeMotionPass::initUseList(block *__block) {
             if (!__tmp) continue;
             defMap[__tmp->def].useList.push_back(__stmt);
         }
-        if (__is_fixed(__stmt))
-            defMap[__stmt].attached = __block;
+        defMap[__stmt].attached = __block;
     };
     visitBlock(__block, __operation);
 }
+
 
 void GlobalCodeMotionPass::scheduleLate(statement *__node) {
     if (!visited.insert(__node).second) return;
     if (__is_fixed(__node)) return;
     block *__lca {};
     for (auto __use : defMap[__node].useList) {
-        scheduleLate(__use);
         if (auto *__phi = __use->as <phi_stmt> ()) {
             auto *__def = __node->get_def();
-            for (auto [__prev, __value] : __phi->list) {
-                if (__value == __node->get_def())
+            for (auto [__prev, __value] : __phi->list)
+                if (__value == __def)
                     __lca = __find_lca(__lca, __prev);
-            }
-        } else { __lca = __find_lca(__lca, defMap[__use].attached); }
+        } else {
+            scheduleLate(__use);
+            __lca = __find_lca(__lca, defMap[__use].attached);
+        }
     }
     return scheduleBlock(__node, __get_early(__node), __lca);
 }
@@ -153,6 +152,7 @@ void GlobalCodeMotionPass::prepareMotion(block *__block) {
 
     __block->flow->set_ptr(__block);
 }
+
 
 void GlobalCodeMotionPass::arrangeMotion(block *__block) {
     auto &__list = newList[__block];
@@ -187,12 +187,12 @@ void GlobalCodeMotionPass::motionDfs(statement *__node, block *__block) {
 }
 
 
-
 bool GlobalCodeMotionPass::checkProperty(function *__func) {
     if (__func->is_unreachable()) return false;
     runtime_assert(__func->has_dom, "GCM requires dominator tree to be built");
     return true;
 }
+
 
 void GlobalCodeMotionPass::setProperty(function *) {}
 

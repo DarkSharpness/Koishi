@@ -51,8 +51,8 @@ static void DoOptimize(IR::IRbuilder *ctx) {
         IR::AggressiveElimination { &__func };
         IR::CFGsimplifier { &__func };
 
-        IR::LoopNestDetector { &__func };
         IR::KnowledgePropagatior { &__func };
+        IR::LoopNestDetector { &__func };
         IR::GlobalCodeMotionPass { &__func };
         IR::GlobalValueNumberPass { &__func };
         IR::DeadCodeEliminator { &__func };
