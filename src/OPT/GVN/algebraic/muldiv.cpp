@@ -104,7 +104,7 @@ void algebraicSimplifier::visitDIV(number_t __lval, number_t __rval) {
         return set_result(DIV, __lval, __rval);
     }
 
-    if (const auto y = __rval; __rval.has_type(BINARY)) {
+    if (const auto y = __rval; __lval.has_type(BINARY)) {
         /* (x * y) / y = x */
         match_return(__lval, m <MUL> (m_value_as(x), m_value_is(y)), set_result(x));
         match_return(__lval, m <MUL> (m_value_is(y), m_value_as(x)), set_result(x));
@@ -157,7 +157,7 @@ void algebraicSimplifier::visitMOD(number_t __lval, number_t __rval) {
     /* x % (0 - y) = x % y */
     if (number_t y {}; is_negative(__rval, y)) return visitMOD(__lval, y);
 
-    if (const auto y = __rval; __rval.has_type(BINARY)) {
+    if (const auto y = __rval; __lval.has_type(BINARY)) {
         /* (x * y) % y = 0 */
         match_return(__lval, m <MUL> (m_value_as(x), m_value_is(y)), set_result(0));
         match_return(__lval, m <MUL> (m_value_is(y), m_value_as(x)), set_result(0));

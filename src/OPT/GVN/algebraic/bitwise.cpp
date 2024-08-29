@@ -15,6 +15,9 @@ void algebraicSimplifier::visitSHL(number_t __lval, number_t __rval) {
     /* x << 0 = x */
     if (d == 0) return set_result(__lval);
 
+    /* x << 32 = 0 */
+    if (d >= 32) return set_result(0);
+
     /* c << d = (c << d) */
     if (__lval.is_const()) return set_result(__lval.get_const() << d);
 
