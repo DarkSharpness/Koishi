@@ -9,18 +9,18 @@ __String_substring__:                   # @__String_substring__
 # %bb.0:
 	addi	sp, sp, -16
 	sw	ra, 12(sp)                      # 4-byte Folded Spill
-	sub	a2, a2, a1
-	add	a1, a0, a1
-	sw	a2, 8(sp)
-	sw	a1, 4(sp)
-	addi	a0, a2, 1
+	sub	a2, a2, a1      # $a2 = len = r - l
+	add	a1, a0, a1      # $a1 = ptr + l
+	sw	a2, 8(sp)       # M[$sp + 8] = $a2 = len
+	sw	a1, 4(sp)       # M[$sp + 4] = $a1 = ptr + l
+	addi	a0, a2, 1   # $a0 = len + 1
 	call	malloc
 	lw	ra, 12(sp)                      # 4-byte Folded Reload
-	lw	a2, 8(sp)
-	lw	a1, 4(sp)
-	add	a4, a2, a0
-	sb	zero, 0(a4)
-	addi	sp, sp, 16
+	lw	a2, 8(sp)       # $a2 = M[$sp + 8] = len
+	lw	a1, 4(sp)       # $a1 = M[$sp + 4] = ptr + l
+	add	a4, a0, a2      # $a4 = $a0 + len
+	sb	zero, 0(a4)     # M[$a0 + len] = 0 ; null-terminate
+	addi	sp, sp, 16  # prepare for tail call
 	tail	memcpy
 .Lfunc_end0:
 	.size	__String_substring__, .Lfunc_end0-__String_substring__
@@ -32,11 +32,10 @@ __String_parseInt__:                    # @__String_parseInt__
 # %bb.0:
 	addi	sp, sp, -16
 	sw	ra, 12(sp)                      # 4-byte Folded Spill
-	lui	a1, %hi(.L.str)
-	addi	a1, a1, %lo(.L.str)
-	addi	a2, sp, 8
+    la  a1, .L.str
+	addi	a2, sp, 8   # $a2 = $sp + 8 = &n
 	call	sscanf
-	lw	a0, 8(sp)
+	lw	a0, 8(sp)       # $a0 = M[$sp + 8] = n
 	lw	ra, 12(sp)                      # 4-byte Folded Reload
 	addi	sp, sp, 16
 	ret
@@ -136,11 +135,11 @@ __toString__:                           # @__toString__
 # %bb.0:
 	addi	sp, sp, -16
 	sw	ra, 12(sp)                      # 4-byte Folded Spill
-	sw	a0, 8(sp)		# sp[8] = n
+	sw	a0, 8(sp)		# M[$sp + 8] = n
+    li  a0, 10          # Make sure the buffer is big enough
 	call	malloc
-	lw	a2, 8(sp)
-	lui	a1, %hi(.L.str)
-	addi	a1, a1, %lo(.L.str)
+	lw	a2, 8(sp)       # $a2 = M[$sp + 8] = n
+    la  a1, .L.str
 	sw	a0, 8(sp)		# sp[8] = str
 	call	sprintf
 	lw	a0, 8(sp)
